@@ -1,4 +1,3 @@
-
 macro(disable_module_deps name)
     if (NOT MUSE_MODULE_${name})
         set(MUSE_MODULE_${name}_TESTS OFF)

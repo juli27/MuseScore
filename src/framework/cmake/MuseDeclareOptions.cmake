@@ -1,4 +1,3 @@
-
 macro(declare_muse_module_opt name def)
     option(MUSE_MODULE_${name} "Build ${name} module" ${def})
     option(MUSE_MODULE_${name}_TESTS "Build ${name} tests" ${def})

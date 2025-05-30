@@ -22,14 +22,6 @@ include(GetBuildType)
 include(GetPlatformInfo)
 include(version)
 
-if (NOT MUSESCORE_BUILD_CONFIGURATION)
-    set(MUSESCORE_BUILD_CONFIGURATION "app")
-endif()
-
-if (NOT MUSE_APP_BUILD_MODE)
-    set(MUSE_APP_BUILD_MODE "dev")
-endif()
-
 # Set revision for local builds
 # Before need run 'make revision' or 'msvc_build.bat revision'
 include(TryUseLocalRevision)
@@ -297,7 +289,7 @@ set(MUSE_APP_BUILD_NUMBER ${CMAKE_BUILD_NUMBER})
 set(MUSE_APP_INSTALL_PREFIX "\"${CMAKE_INSTALL_PREFIX}\"")
 set(MUSE_APP_INSTALL_NAME "\"${Mscore_INSTALL_NAME}\"")
 
-include(${MUSE_FRAMEWORK_SRC_PATH}/cmake/MuseSetupConfiguration.cmake)
+include(MuseSetupConfiguration)
 
 ###########################################
 # Global definitions
