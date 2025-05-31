@@ -47,6 +47,7 @@ QString qtrc(const char* context, const String& key, const String& disambiguatio
 
 #ifdef NO_QT_SUPPORT
 #define QT_TRANSLATE_NOOP(ctx, msg) msg
+#define QT_TRANSLATE_NOOP3(ctx, msg, comment) { msg, comment }
 #endif
 
 #define QT_TRANSLATE_NOOP_U16(ctx, msg) u##msg

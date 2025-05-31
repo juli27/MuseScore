@@ -104,7 +104,7 @@ struct RemoteEvent {
         if (this->type == RemoteEventType::Note) {
             //: A MIDI remote event, namely a note event
             return muse::mtrc("shortcuts", "Note %1")
-                   .arg(String::fromStdString(muse::pitchToString(this->value)));
+                   .arg(muse::midiPitchToLocalizedString(this->value));
         } else if (this->type == RemoteEventType::Controller) {
             //: A MIDI remote event, namely a MIDI controller event
             return muse::mtrc("shortcuts", "CC %1").arg(String::number(this->value));

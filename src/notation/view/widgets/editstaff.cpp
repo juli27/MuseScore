@@ -659,7 +659,7 @@ void EditStaff::editStringDataClicked()
 
 QString EditStaff::midiCodeToStr(int midiCode)
 {
-    return QString::fromStdString(muse::pitchToString(midiCode));
+    return muse::midiPitchToLocalizedString(midiCode);
 }
 
 void EditStaff::showStaffTypeDialog()

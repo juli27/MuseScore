@@ -25,7 +25,7 @@
 
 using namespace muse;
 
-static constexpr const char* sharpNotes[] = {
+static constexpr const char* SHARP_PITCH_CLASS_NAMES[] = {
     QT_TRANSLATE_NOOP("global", "C"),
     QT_TRANSLATE_NOOP("global", "C♯"),
     QT_TRANSLATE_NOOP("global", "D"),
@@ -40,7 +40,7 @@ static constexpr const char* sharpNotes[] = {
     QT_TRANSLATE_NOOP("global", "B")
 };
 
-static constexpr const char* flatNotes[] = {
+static constexpr const char* FLAT_PITCH_CLASS_NAMES[] = {
     QT_TRANSLATE_NOOP("global", "C"),
     QT_TRANSLATE_NOOP("global", "D♭"),
     QT_TRANSLATE_NOOP("global", "D"),
@@ -55,18 +55,49 @@ static constexpr const char* flatNotes[] = {
     QT_TRANSLATE_NOOP("global", "B")
 };
 
-std::string muse::pitchToString(int pitch, bool addoctave, bool useFlats /* = false */)
+namespace {
+struct CommentedString {
+    const char* str;
+    const char* comment;
+};
+}
+
+static constexpr CommentedString OCTAVE_NAMES[] = {
+    QT_TRANSLATE_NOOP3("global", "-1", "octave designation"),
+    QT_TRANSLATE_NOOP3("global", "0", "octave designation"),
+    QT_TRANSLATE_NOOP3("global", "1", "octave designation"),
+    QT_TRANSLATE_NOOP3("global", "2", "octave designation"),
+    QT_TRANSLATE_NOOP3("global", "3", "octave designation"),
+    QT_TRANSLATE_NOOP3("global", "4", "octave designation"),
+    QT_TRANSLATE_NOOP3("global", "5", "octave designation"),
+    QT_TRANSLATE_NOOP3("global", "6", "octave designation"),
+    QT_TRANSLATE_NOOP3("global", "7", "octave designation"),
+    QT_TRANSLATE_NOOP3("global", "8", "octave designation"),
+    QT_TRANSLATE_NOOP3("global", "9", "octave designation"),
+};
+
+String muse::midiPitchToLocalizedString(int pitch, bool addOctave /* = true */, bool useFlats /* = false */)
 {
     if (pitch < 0 || pitch > 127) {
-        return std::string();
+        return String{};
     }
 
-    auto source = useFlats ? flatNotes : sharpNotes;
+    const auto classNames = useFlats ? FLAT_PITCH_CLASS_NAMES : SHARP_PITCH_CLASS_NAMES;
+    const std::size_t pitchClass = pitch % 12;
+    String pitchClassName = mtrc("global", classNames[pitchClass]);
 
-    int i = pitch % 12;
-    if (addoctave) {
-        int octave = (pitch / 12) - 1;
-        return muse::trc("global", source[i]) + std::to_string(octave);
+    if (!addOctave) {
+        return pitchClassName;
     }
-    return muse::trc("global", source[i]);
+
+    const int octave = (pitch / 12) - 1;
+    const std::size_t octaveNameIdx = octave + 1;
+    const CommentedString& untrOctaveName = OCTAVE_NAMES[octaveNameIdx];
+    const String octaveName = mtrc("global", untrOctaveName.str, untrOctaveName.comment);
+
+    //: %1 is the pitch class (C, C♯, D♭, etc.)
+    //: %2 is the octave designation (-1, 0, 1, etc.)
+    const String pitchName = mtrc("global", "%1%2", "pitch name");
+
+    return pitchName.arg(pitchClassName, octaveName);
 }

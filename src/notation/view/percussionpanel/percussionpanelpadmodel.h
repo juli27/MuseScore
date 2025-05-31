@@ -57,7 +57,7 @@ public:
     int pitch() const { return m_pitch; }
     void setPitch(int pitch);
 
-    QString midiNote() const { return QString::fromStdString(muse::pitchToString(m_pitch)); }
+    QString midiNote() const { return muse::midiPitchToLocalizedString(m_pitch); }
 
     void setNotationPreviewItem(mu::engraving::ElementPtr item);
     mu::engraving::ElementPtr notationPreviewItem() const { return m_notationPreviewItem; }

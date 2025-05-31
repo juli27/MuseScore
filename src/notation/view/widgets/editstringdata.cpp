@@ -335,5 +335,5 @@ void EditStringData::accept()
 
 QString EditStringData::midiCodeToStr(int midiCode)
 {
-    return QString::fromStdString(muse::pitchToString(midiCode));
+    return muse::midiPitchToLocalizedString(midiCode);
 }
