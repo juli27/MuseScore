@@ -24,6 +24,8 @@
 
 #include "ui_editpitch.h"
 
+#include "global/midipitch.h"
+
 namespace mu::notation {
 //---------------------------------------------------------
 //   EditPitch
@@ -35,7 +37,7 @@ class EditPitch : public QDialog, private Ui::EditPitchBase
 
 public:
     EditPitch(QWidget* parent);
-    EditPitch(QWidget* parent, int midiCode);
+    EditPitch(QWidget* parent, muse::MidiPitch);
     ~EditPitch() {}
 
 private slots:

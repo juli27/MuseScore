@@ -278,7 +278,8 @@ void PercussionPanelPadListModel::load()
             continue;
         }
 
-        PercussionPanelPadModel* model = createPadModelForPitch(pitch);
+        const auto midiPitch = muse::MidiPitch::fromInt(pitch);
+        PercussionPanelPadModel* model = createPadModelForPitch(midiPitch);
         const int modelIndex = createModelIndexForPitch(pitch);
 
         if (modelIndex < 0) {
@@ -322,17 +323,16 @@ bool PercussionPanelPadListModel::indexIsValid(int index) const
     return index > -1 && index < m_padModels.count();
 }
 
-PercussionPanelPadModel* PercussionPanelPadListModel::createPadModelForPitch(int pitch)
+PercussionPanelPadModel* PercussionPanelPadListModel::createPadModelForPitch(const muse::MidiPitch pitch)
 {
     IF_ASSERT_FAILED(m_drumset && m_drumset->isValid(pitch)) {
         return nullptr;
     }
 
-    PercussionPanelPadModel* model = new PercussionPanelPadModel(this);
+    PercussionPanelPadModel* model = new PercussionPanelPadModel(pitch, this);
 
     model->setPadName(m_drumset->translatedName(pitch));
     model->setKeyboardShortcut(m_drumset->shortcut(pitch));
-    model->setPitch(pitch);
 
     model->padActionTriggered().onReceive(this, [this, pitch](PercussionPanelPadModel::PadAction action) {
         m_padActionRequestChannel.send(action, pitch);
@@ -402,7 +402,7 @@ void PercussionPanelPadListModel::swapMidiNotesAndShortcuts(int fromIndex, int t
     PercussionPanelPadModel* fromModel = m_padModels.at(fromIndex);
     PercussionPanelPadModel* toModel = m_padModels.at(toIndex);
 
-    const int tempPitch = fromModel->pitch();
+    const auto tempPitch = fromModel->pitch();
     const QString tempShortcut = fromModel->keyboardShortcut();
 
     fromModel->setPitch(toModel->pitch());

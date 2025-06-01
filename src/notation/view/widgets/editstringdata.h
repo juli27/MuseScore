@@ -48,7 +48,7 @@ public:
     int frets() const;
 
 protected:
-    QString midiCodeToStr(int midiCode);
+    QString midiCodeToStr(muse::MidiPitch);
 
 private slots:
     void accept() override;

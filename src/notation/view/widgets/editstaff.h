@@ -31,6 +31,7 @@
 #include "modularity/ioc.h"
 #include "context/iglobalcontext.h"
 #include "global/iinteractive.h"
+#include "global/midipitch.h"
 #include "engraving/iengravingconfiguration.h"
 #include "iselectinstrumentscenario.h"
 
@@ -97,14 +98,17 @@ private:
     void applyStaffProperties();
     void applyPartProperties();
 
-    QString midiCodeToStr(int midiCode);
+    QString midiCodeToStr(muse::MidiPitch);
 
     mu::engraving::Staff* m_staff = nullptr;
     mu::engraving::Staff* m_orgStaff = nullptr;
     Instrument m_instrument;
     Instrument m_orgInstrument;
     InstrumentKey m_instrumentKey;
-    int m_minPitchA, m_maxPitchA, m_minPitchP, m_maxPitchP;
+    muse::MidiPitch m_minPitchA;
+    muse::MidiPitch m_maxPitchA;
+    muse::MidiPitch m_minPitchP;
+    muse::MidiPitch m_maxPitchP;
     mu::engraving::Fraction m_tickStart, m_tickEnd;
 
     EditStaffType* editStaffTypeDialog = nullptr;

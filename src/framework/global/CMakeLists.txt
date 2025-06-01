@@ -55,8 +55,6 @@ set(MODULE_SRC
     ${CMAKE_CURRENT_LIST_DIR}/timer.h
     ${CMAKE_CURRENT_LIST_DIR}/threadutils.h
     ${CMAKE_CURRENT_LIST_DIR}/progress.h
-    ${CMAKE_CURRENT_LIST_DIR}/utils.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/utils.h
     ${CMAKE_CURRENT_LIST_DIR}/interpolation.cpp
     ${CMAKE_CURRENT_LIST_DIR}/interpolation.h
     ${CMAKE_CURRENT_LIST_DIR}/defer.h
@@ -71,6 +69,8 @@ set(MODULE_SRC
     ${CMAKE_CURRENT_LIST_DIR}/configreader.h
     ${CMAKE_CURRENT_LIST_DIR}/uuid.cpp
     ${CMAKE_CURRENT_LIST_DIR}/uuid.h
+    ${CMAKE_CURRENT_LIST_DIR}/midipitch.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/midipitch.h
 
     ${KORS_MODULARITY_SRC}
     ${CMAKE_CURRENT_LIST_DIR}/modularity/ioccontext.cpp

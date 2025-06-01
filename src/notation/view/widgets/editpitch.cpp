@@ -46,14 +46,14 @@ EditPitch::EditPitch(QWidget* parent)
     tableWidget->setCurrentCell(tableWidget->rowCount() - 1 - 5, 0);                  // select centre C by default
 }
 
-EditPitch::EditPitch(QWidget* parent, int midiCode)
+EditPitch::EditPitch(QWidget* parent, const muse::MidiPitch pitch)
     : QDialog(parent)
 {
     setObjectName("EditPitchEdit");
 
     setup();
 
-    tableWidget->setCurrentCell(tableWidget->rowCount() - 1 - (midiCode / 12), midiCode % 12);
+    tableWidget->setCurrentCell(tableWidget->rowCount() - pitch.octave(), pitch.pitchClass());
 }
 
 //---------------------------------------------------------
@@ -99,9 +99,12 @@ void EditPitch::accept()
     on_tableWidget_cellDoubleClicked(tableWidget->currentRow(), tableWidget->currentColumn());
 }
 
-void EditPitch::on_tableWidget_cellDoubleClicked(int row, int col)
+void EditPitch::on_tableWidget_cellDoubleClicked(const int row, const int col)
 {
+    const int octave = tableWidget->rowCount() - 1 - row;
+    const int pitchClass = col;
+
     // topmost row contains notes for 10-th MIDI octave (numbered as '9')
-    int pitch = (tableWidget->rowCount() - 1 - row) * 12 + col;
-    done((pitch > 127) ? 127 : pitch);
+    const auto pitch = muse::MidiPitch::clamp(pitchClass, octave);
+    done(pitch);
 }

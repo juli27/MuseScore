@@ -349,7 +349,7 @@ void StringTuningsSettingsModel::saveStrings()
     int numOfStrings = m_strings.size();
     for (int i = 0; i < numOfStrings; ++i) {
         const StringTuningsItem* item = m_strings.at(numOfStrings - i - 1);
-        stringList[i].pitch = item->value();
+        stringList[i].pitch = MidiPitch::fromInt(item->value());
         stringList[i].useFlat = item->useFlat();
     }
 

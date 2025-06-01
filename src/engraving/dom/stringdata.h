@@ -23,6 +23,8 @@
 #ifndef MU_ENGRAVING_TABLATURE_H
 #define MU_ENGRAVING_TABLATURE_H
 
+#include "engraving/types/types.h"
+
 #include <cstddef>
 #include <vector>
 #include <map>
@@ -39,10 +41,10 @@ class Staff;
 
 // defines the string of an instrument
 struct instrString {
-    instrString(int p = 0, bool o = false, int s = 0)
+    instrString(MidiPitch p = {}, bool o = false, int s = 0)
         : pitch(p), open(o), startFret(s) {}
 
-    int pitch = 0;          // the pitch of the string
+    MidiPitch pitch;          // the pitch of the string
     bool open = false;          // true: string is open | false: string is fretted
     int startFret = 0;      // banjo 5th string starts on 5th fret
     bool useFlat = false;

@@ -29,6 +29,7 @@
 #include <string>
 
 #include "containers.h"
+#include "global/midipitch.h"
 
 #ifndef UNUSED
 #define UNUSED(x) (void)x;
@@ -301,29 +302,34 @@ struct Event {
         m_data[0] |= mask;
     }
 
-    uint8_t note() const
+    MidiPitch note() const
     {
         assertOpcode({ Opcode::NoteOn, Opcode::NoteOff, Opcode::PolyPressure,
                        Opcode::PerNotePitchBend, Opcode::PerNoteManagement,
                        Opcode::RegisteredPerNoteController, Opcode::AssignablePerNoteController });
         switch (messageType()) {
         case MessageType::ChannelVoice10:
-        case MessageType::ChannelVoice20: return (m_data[0] >> 8) & 0x7F;
-            break;
+        case MessageType::ChannelVoice20: return MidiPitch::fromInt((m_data[0] >> 8) & 0x7F);
         default: assert(false);
         }
-        return 0;
+        return MidiPitch{};
     }
 
-    void setNote(uint8_t value)
+    void setNote(const MidiPitch pitch)
     {
         assertOpcode({ Opcode::NoteOn, Opcode::NoteOff, Opcode::PolyPressure,
                        Opcode::PerNotePitchBend, Opcode::PerNoteManagement,
                        Opcode::RegisteredPerNoteController, Opcode::AssignablePerNoteController });
-        assert(value < 128);
+
+        const std::uint8_t value = pitch.value();
         uint32_t mask = value << 8;
         m_data[0] &= 0xFFFF00FF;
         m_data[0] |= mask;
+    }
+
+    void setNote(uint8_t value)
+    {
+        setNote(MidiPitch::fromInt(value));
     }
 
     //! return note from Pitch attribute (for NoteOn & NoteOff) events) if exists else return note()

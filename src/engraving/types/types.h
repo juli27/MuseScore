@@ -26,6 +26,7 @@
 #include <map>
 #include <unordered_set>
 
+#include "global/midipitch.h"
 #include "global/types/id.h"
 #include "global/types/string.h"
 #include "global/types/translatablestring.h"
@@ -244,6 +245,8 @@ using PolygonF = muse::PolygonF;
 
 // --- Draw ---
 using Color = muse::draw::Color;        // P_TYPE::COLOR
+
+using MidiPitch = muse::MidiPitch;
 
 enum class OrnamentStyle : unsigned char {
     DEFAULT, BAROQUE

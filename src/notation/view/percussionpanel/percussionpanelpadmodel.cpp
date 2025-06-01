@@ -31,8 +31,8 @@ static const QString DEFINE_PAD_SHORTCUT_CODE("define-pad-shortcut");
 using namespace mu::notation;
 using namespace muse::ui;
 
-PercussionPanelPadModel::PercussionPanelPadModel(QObject* parent)
-    : QObject(parent)
+PercussionPanelPadModel::PercussionPanelPadModel(const muse::MidiPitch pitch, QObject* parent)
+    : QObject(parent), m_pitch(pitch)
 {
 }
 
@@ -56,7 +56,7 @@ void PercussionPanelPadModel::setKeyboardShortcut(const QString& keyboardShortcu
     emit keyboardShortcutChanged();
 }
 
-void PercussionPanelPadModel::setPitch(int pitch)
+void PercussionPanelPadModel::setPitch(const muse::MidiPitch pitch)
 {
     if (m_pitch == pitch) {
         return;

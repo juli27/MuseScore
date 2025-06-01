@@ -45,11 +45,11 @@ bool StringData::bFretting = false;
 
 StringData::StringData(int numFrets, int numStrings, int strings[], bool useFlats)
 {
-    instrString strg = { 0, false, 0 };
+    instrString strg = { MidiPitch{}, false, 0 };
     m_frets = numFrets;
 
     for (int i = 0; i < numStrings; i++) {
-        strg.pitch = strings[i];
+        strg.pitch = MidiPitch::fromInt(strings[i]);
         m_stringTable.push_back(strg);
     }
     m_useFlats = useFlats;

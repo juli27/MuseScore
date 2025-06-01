@@ -3199,7 +3199,7 @@ void MusicXmlParserPass2::staffTuning(StringData* t)
     if (0 < line && line <= static_cast<int>(t->stringList().size())) {
         int pitch = MusicXmlStepAltOct2Pitch(step, alter, octave);
         if (pitch >= 0) {
-            t->stringList()[line - 1].pitch = pitch;
+            t->stringList()[line - 1].pitch = MidiPitch::fromInt(pitch);
         } else {
             m_logger->logError(String(u"invalid string %1 tuning step/alter/oct %2/%3/%4")
                                .arg(line).arg(step).arg(alter).arg(octave),

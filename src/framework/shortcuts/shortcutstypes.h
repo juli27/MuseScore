@@ -26,7 +26,7 @@
 #include <list>
 #include <QKeySequence>
 
-#include "global/utils.h"
+#include "global/midipitch.h"
 #include "global/stringutils.h"
 #include "global/translation.h"
 #include "midi/midievent.h"
@@ -102,9 +102,10 @@ struct RemoteEvent {
     String name() const
     {
         if (this->type == RemoteEventType::Note) {
+            const auto pitch = muse::MidiPitch::fromInt(this->value);
             //: A MIDI remote event, namely a note event
             return muse::mtrc("shortcuts", "Note %1")
-                   .arg(muse::midiPitchToLocalizedString(this->value));
+                   .arg(pitch.toLocalizedString());
         } else if (this->type == RemoteEventType::Controller) {
             //: A MIDI remote event, namely a MIDI controller event
             return muse::mtrc("shortcuts", "CC %1").arg(String::number(this->value));

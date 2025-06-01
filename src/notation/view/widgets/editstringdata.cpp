@@ -25,7 +25,6 @@
 #include <QKeyEvent>
 
 #include "translation.h"
-#include "global/utils.h"
 
 #include "editpitch.h"
 
@@ -149,11 +148,12 @@ void EditStringData::editStringClicked()
     int newCode;
 
     EditPitch* ep = new EditPitch(this, _stringsLoc[i].pitch);
-    if ((newCode=ep->exec()) != -1) {
+    if ((newCode = ep->exec()) != -1) {
+        const MidiPitch pitch = MidiPitch::fromInt(newCode);
         // update item value in local string list and item text in dlg list control
-        _stringsLoc[i].pitch = newCode;
+        _stringsLoc[i].pitch = pitch;
         QTableWidgetItem* item = stringList->item(i, 1);
-        item->setText(midiCodeToStr(newCode));
+        item->setText(midiCodeToStr(pitch));
         _modified = true;
     }
 }
@@ -193,8 +193,10 @@ void EditStringData::newStringClicked()
             i = stringList->rowCount();
         }
 
+        const MidiPitch pitch = MidiPitch::fromInt(newCode);
+
         // insert in local string list and in dlg list control
-        mu::engraving::instrString strg = { newCode, 0 };
+        mu::engraving::instrString strg = { pitch, 0 };
         _stringsLoc.insert(_stringsLoc.begin() + i, strg);
         stringList->insertRow(i);
 
@@ -333,7 +335,7 @@ void EditStringData::accept()
     }
 }
 
-QString EditStringData::midiCodeToStr(int midiCode)
+QString EditStringData::midiCodeToStr(const MidiPitch midiCode)
 {
-    return muse::midiPitchToLocalizedString(midiCode);
+    return midiCode.toLocalizedString();
 }

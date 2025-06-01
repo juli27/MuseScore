@@ -28,6 +28,8 @@
 #include "stringdata.h"
 #include "textbase.h"
 
+#include "engraving/types/types.h"
+
 #include "log.h"
 
 using namespace mu;
@@ -62,10 +64,6 @@ Instrument::Instrument(String id)
     a->setName(String::fromUtf8(InstrChannel::DEFAULT_NAME));
     m_channel.push_back(a);
 
-    m_minPitchA   = 0;
-    m_maxPitchA   = 127;
-    m_minPitchP   = 0;
-    m_maxPitchP   = 127;
     m_useDrumset  = false;
     m_drumset     = 0;
     m_singleNoteDynamics = true;
@@ -1002,38 +1000,22 @@ void Instrument::setClefType(size_t staffIdx, const ClefTypeList& c)
     m_clefType[staffIdx] = c;
 }
 
-//---------------------------------------------------------
-//   minPitchP
-//---------------------------------------------------------
-
-int Instrument::minPitchP() const
+MidiPitch Instrument::minPitchP() const
 {
     return m_minPitchP;
 }
 
-//---------------------------------------------------------
-//   maxPitchP
-//---------------------------------------------------------
-
-int Instrument::maxPitchP() const
+MidiPitch Instrument::maxPitchP() const
 {
     return m_maxPitchP;
 }
 
-//---------------------------------------------------------
-//   minPitchA
-//---------------------------------------------------------
-
-int Instrument::minPitchA() const
+MidiPitch Instrument::minPitchA() const
 {
     return m_minPitchA;
 }
 
-//---------------------------------------------------------
-//   maxPitchA
-//---------------------------------------------------------
-
-int Instrument::maxPitchA() const
+MidiPitch Instrument::maxPitchA() const
 {
     return m_maxPitchA;
 }
@@ -1171,8 +1153,8 @@ Instrument Instrument::fromTemplate(const InstrumentTemplate* templ)
 {
     Instrument instrument(templ->id);
     instrument.setSoundId(templ->soundId);
-    instrument.setAmateurPitchRange(templ->minPitchA, templ->maxPitchA);
-    instrument.setProfessionalPitchRange(templ->minPitchP, templ->maxPitchP);
+    instrument.setAmateurPitchRange(MidiPitch::fromInt(templ->minPitchA), MidiPitch::fromInt(templ->maxPitchA));
+    instrument.setProfessionalPitchRange(MidiPitch::fromInt(templ->minPitchP), MidiPitch::fromInt(templ->maxPitchP));
 
     for (const StaffName& sn : templ->longNames) {
         instrument.addLongName(StaffName(sn.name(), sn.pos()));

@@ -1896,17 +1896,17 @@ void TWrite::write(const Instrument* item, XmlWriter& xml, WriteContext&, const 
     write(&item->shortNames(), xml, "shortName");
 //      if (!_trackName.empty())
     xml.tag("trackName", item->trackName());
-    if (item->minPitchP() > 0) {
-        xml.tag("minPitchP", item->minPitchP());
+    if (item->minPitchP() > MidiPitch::min()) {
+        xml.tag("minPitchP", item->minPitchP().value());
     }
-    if (item->maxPitchP() < 127) {
-        xml.tag("maxPitchP", item->maxPitchP());
+    if (item->maxPitchP() < MidiPitch::max()) {
+        xml.tag("maxPitchP", item->maxPitchP().value());
     }
-    if (item->minPitchA() > 0) {
-        xml.tag("minPitchA", item->minPitchA());
+    if (item->minPitchA() > MidiPitch::min()) {
+        xml.tag("minPitchA", item->minPitchA().value());
     }
-    if (item->maxPitchA() < 127) {
-        xml.tag("maxPitchA", item->maxPitchA());
+    if (item->maxPitchA() < MidiPitch::max()) {
+        xml.tag("maxPitchA", item->maxPitchA().value());
     }
     if (item->transpose().diatonic) {
         xml.tag("transposeDiatonic", item->transpose().diatonic);

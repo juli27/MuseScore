@@ -23,7 +23,6 @@
 #include "editstaff.h"
 
 #include "translation.h"
-#include "global/utils.h"
 
 #include "ui/view/widgetstatestore.h"
 #include "ui/view/widgetutils.h"
@@ -326,19 +325,21 @@ void EditStaff::minPitchAClicked()
     EditPitch ep(this, m_instrument.minPitchA());
     ep.setWindowModality(Qt::WindowModal);
     if ((newCode = ep.exec()) != -1) {
-        minPitchA->setText(midiCodeToStr(newCode));
-        m_minPitchA = newCode;
+        const auto pitch = MidiPitch::fromInt(newCode);
+        minPitchA->setText(midiCodeToStr(pitch));
+        m_minPitchA = pitch;
     }
 }
 
 void EditStaff::maxPitchAClicked()
 {
     int newCode;
-    EditPitch ep(this, m_instrument.maxPitchP());
+    EditPitch ep(this, m_instrument.maxPitchA());
     ep.setWindowModality(Qt::WindowModal);
     if ((newCode = ep.exec()) != -1) {
-        maxPitchA->setText(midiCodeToStr(newCode));
-        m_maxPitchA = newCode;
+        const auto pitch = MidiPitch::fromInt(newCode);
+        maxPitchA->setText(midiCodeToStr(pitch));
+        m_maxPitchA = pitch;
     }
 }
 
@@ -348,8 +349,9 @@ void EditStaff::minPitchPClicked()
     EditPitch ep(this, m_instrument.minPitchP());
     ep.setWindowModality(Qt::WindowModal);
     if ((newCode = ep.exec()) != -1) {
-        minPitchP->setText(midiCodeToStr(newCode));
-        m_minPitchP = newCode;
+        const auto pitch = MidiPitch::fromInt(newCode);
+        minPitchP->setText(midiCodeToStr(pitch));
+        m_minPitchP = pitch;
     }
 }
 
@@ -359,8 +361,9 @@ void EditStaff::maxPitchPClicked()
     EditPitch ep(this, m_instrument.maxPitchP());
     ep.setWindowModality(Qt::WindowModal);
     if ((newCode = ep.exec()) != -1) {
-        maxPitchP->setText(midiCodeToStr(newCode));
-        m_maxPitchP = newCode;
+        const auto pitch = MidiPitch::fromInt(newCode);
+        maxPitchP->setText(midiCodeToStr(pitch));
+        m_maxPitchP = pitch;
     }
 }
 
@@ -542,10 +545,10 @@ void EditStaff::applyPartProperties()
     }
 
     m_instrument.setTranspose(interval);
-    m_instrument.setMinPitchA(m_minPitchA);
-    m_instrument.setMaxPitchA(m_maxPitchA);
-    m_instrument.setMinPitchP(m_minPitchP);
-    m_instrument.setMaxPitchP(m_maxPitchP);
+    m_instrument.setMinPitchA(MidiPitch::fromInt(m_minPitchA));
+    m_instrument.setMaxPitchA(MidiPitch::fromInt(m_maxPitchA));
+    m_instrument.setMinPitchP(MidiPitch::fromInt(m_minPitchP));
+    m_instrument.setMaxPitchP(MidiPitch::fromInt(m_maxPitchP));
 
     StaffNameList shortNames;
     if (sn.length() > 0) {
@@ -636,12 +639,12 @@ void EditStaff::editStringDataClicked()
             }
 
             // range bottom is surely the pitch of the lowest string
-            m_instrument.setMinPitchA(lowestStringPitch);
-            m_instrument.setMinPitchP(lowestStringPitch);
+            m_instrument.setMinPitchA(MidiPitch::fromInt(lowestStringPitch));
+            m_instrument.setMinPitchP(MidiPitch::fromInt(lowestStringPitch));
 
             // range top should keep the same interval with the highest string it has now
-            m_instrument.setMaxPitchA(m_instrument.maxPitchA() + highestStringPitch - oldHighestStringPitch);
-            m_instrument.setMaxPitchP(m_instrument.maxPitchP() + highestStringPitch - oldHighestStringPitch);
+            m_instrument.setMaxPitchA(MidiPitch::fromInt(m_instrument.maxPitchA() + highestStringPitch - oldHighestStringPitch));
+            m_instrument.setMaxPitchP(MidiPitch::fromInt(m_instrument.maxPitchP() + highestStringPitch - oldHighestStringPitch));
 
             // update dlg controls
             minPitchA->setText(midiCodeToStr(m_instrument.minPitchA()));
@@ -657,9 +660,9 @@ void EditStaff::editStringDataClicked()
     }
 }
 
-QString EditStaff::midiCodeToStr(int midiCode)
+QString EditStaff::midiCodeToStr(const MidiPitch pitch)
 {
-    return muse::midiPitchToLocalizedString(midiCode);
+    return pitch.toLocalizedString();
 }
 
 void EditStaff::showStaffTypeDialog()

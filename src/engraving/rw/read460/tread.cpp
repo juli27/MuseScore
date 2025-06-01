@@ -969,21 +969,21 @@ bool TRead::readProperties(Instrument* item, XmlReader& e, ReadContext& ctx, Par
     } else if (tag == "trackName") {
         item->setTrackName(e.readText());
     } else if (tag == "minPitch") {      // obsolete
-        int pitch = e.readInt();
+        const auto pitch = MidiPitch::fromInt(e.readInt());
         item->setMinPitchP(pitch);
         item->setMinPitchA(pitch);
     } else if (tag == "maxPitch") {       // obsolete
-        int pitch = e.readInt();
+        const auto pitch = MidiPitch::fromInt(e.readInt());
         item->setMaxPitchP(pitch);
         item->setMaxPitchA(pitch);
     } else if (tag == "minPitchA") {
-        item->setMinPitchA(e.readInt());
+        item->setMinPitchA(MidiPitch::fromInt(e.readInt()));
     } else if (tag == "minPitchP") {
-        item->setMinPitchP(e.readInt());
+        item->setMinPitchP(MidiPitch::fromInt(e.readInt()));
     } else if (tag == "maxPitchA") {
-        item->setMaxPitchA(e.readInt());
+        item->setMaxPitchA(MidiPitch::fromInt(e.readInt()));
     } else if (tag == "maxPitchP") {
-        item->setMaxPitchP(e.readInt());
+        item->setMaxPitchP(MidiPitch::fromInt(e.readInt()));
     } else if (tag == "transposition") {    // obsolete
         Interval transpose;
         transpose.chromatic = e.readInt();
@@ -4338,7 +4338,7 @@ void TRead::read(StringData* item, XmlReader& e)
             instrString strg;
             strg.open  = e.intAttribute("open", 0);
             strg.useFlat = e.intAttribute("useFlat", 0);
-            strg.pitch = e.readInt();
+            strg.pitch = MidiPitch::fromInt(e.readInt());
             item->stringList().push_back(strg);
         } else {
             e.unknown();

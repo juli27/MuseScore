@@ -327,10 +327,10 @@ public:
     void setSoundId(const String& id) { m_soundId = id; }
     String family() const;
     void setId(const String& id) { m_id = id; }
-    void setMinPitchP(int v) { m_minPitchP = v; }
-    void setMaxPitchP(int v) { m_maxPitchP = v; }
-    void setMinPitchA(int v) { m_minPitchA = v; }
-    void setMaxPitchA(int v) { m_maxPitchA = v; }
+    void setMinPitchP(const MidiPitch p) { m_minPitchP = p; }
+    void setMaxPitchP(const MidiPitch p) { m_maxPitchP = p; }
+    void setMinPitchA(const MidiPitch p) { m_minPitchA = p; }
+    void setMaxPitchA(const MidiPitch p) { m_maxPitchA = p; }
     Interval transpose() const { return m_transpose; }
     void setTranspose(const Interval& v) { m_transpose = v; }
     void setMusicXmlId(const String& musicXmlId) { m_musicXmlId = musicXmlId; }
@@ -340,8 +340,8 @@ public:
     Drumset* drumset() { return m_drumset; }
     bool useDrumset() const { return m_useDrumset; }
     void setUseDrumset(bool val);
-    void setAmateurPitchRange(int a, int b) { m_minPitchA = a; m_maxPitchA = b; }
-    void setProfessionalPitchRange(int a, int b) { m_minPitchP = a; m_maxPitchP = b; }
+    void setAmateurPitchRange(const MidiPitch min, const MidiPitch max) { m_minPitchA = min; m_maxPitchA = max; }
+    void setProfessionalPitchRange(const MidiPitch min, const MidiPitch max) { m_minPitchP = min; m_maxPitchP = max; }
     InstrChannel* channel(int idx) { return muse::value(m_channel, idx); }
     const InstrChannel* channel(int idx) const { return muse::value(m_channel, idx); }
     InstrChannel* playbackChannel(int idx, MasterScore*);
@@ -373,10 +373,10 @@ public:
     void addLongName(const StaffName& f);
     void addShortName(const StaffName& f);
 
-    int minPitchP() const;
-    int maxPitchP() const;
-    int minPitchA() const;
-    int maxPitchA() const;
+    MidiPitch minPitchP() const;
+    MidiPitch maxPitchP() const;
+    MidiPitch minPitchA() const;
+    MidiPitch maxPitchA() const;
     String musicXmlId() const;
 
     const StaffNameList& longNames() const;
@@ -419,10 +419,10 @@ private:
     String m_id;
     String m_soundId;
 
-    int m_minPitchA = 0;
-    int m_maxPitchA = 0;
-    int m_minPitchP = 0;
-    int m_maxPitchP = 0;
+    MidiPitch m_minPitchA = MidiPitch::min();
+    MidiPitch m_maxPitchA = MidiPitch::max();
+    MidiPitch m_minPitchP = MidiPitch::min();
+    MidiPitch m_maxPitchP = MidiPitch::max();
     Interval m_transpose;
     String m_musicXmlId;
 

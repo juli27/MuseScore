@@ -24,7 +24,7 @@
 
 #include <QObject>
 
-#include "global/utils.h"
+#include "global/midipitch.h"
 
 #include "async/asyncable.h"
 #include "async/notification.h"
@@ -46,7 +46,7 @@ class PercussionPanelPadModel : public QObject, public muse::async::Asyncable
     Q_PROPERTY(QList<QVariantMap> contextMenuItems READ contextMenuItems CONSTANT)
 
 public:
-    explicit PercussionPanelPadModel(QObject* parent = nullptr);
+    explicit PercussionPanelPadModel(muse::MidiPitch, QObject* parent = nullptr);
 
     QString padName() const { return m_padName; }
     void setPadName(const QString& padName);
@@ -54,10 +54,10 @@ public:
     QString keyboardShortcut() const { return m_keyboardShortcut; }
     void setKeyboardShortcut(const QString& keyboardShortcut);
 
-    int pitch() const { return m_pitch; }
-    void setPitch(int pitch);
+    muse::MidiPitch pitch() const { return m_pitch; }
+    void setPitch(muse::MidiPitch pitch);
 
-    QString midiNote() const { return muse::midiPitchToLocalizedString(m_pitch); }
+    QString midiNote() const { return m_pitch.toLocalizedString(); }
 
     void setNotationPreviewItem(mu::engraving::ElementPtr item);
     mu::engraving::ElementPtr notationPreviewItem() const { return m_notationPreviewItem; }
@@ -92,7 +92,7 @@ private:
     QString m_padName;
 
     QString m_keyboardShortcut;
-    int m_pitch = -1;
+    muse::MidiPitch m_pitch;
 
     mu::engraving::ElementPtr m_notationPreviewItem;
 

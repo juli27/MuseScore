@@ -24,6 +24,7 @@
 
 #include <QAbstractListModel>
 
+#include "global/midipitch.h"
 #include "modularity/ioc.h"
 #include "async/asyncable.h"
 #include "async/channel.h"
@@ -100,7 +101,7 @@ private:
 
     bool indexIsValid(int index) const;
 
-    PercussionPanelPadModel* createPadModelForPitch(int pitch);
+    PercussionPanelPadModel* createPadModelForPitch(muse::MidiPitch);
     int createModelIndexForPitch(int pitch) const;
 
     int getModelIndexForPitch(int pitch) const;

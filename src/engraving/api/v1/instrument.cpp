@@ -95,7 +95,7 @@ QVariantList StringData::stringList() const
     QVariantList pluginStringsList;
     for (instrString str : _data.stringList()) {
         QVariantMap pluginStringData;
-        pluginStringData["pitch"] = str.pitch;
+        pluginStringData["pitch"] = str.pitch.value();
         pluginStringData["open"] = str.open;
         pluginStringsList.append(pluginStringData);
     }
