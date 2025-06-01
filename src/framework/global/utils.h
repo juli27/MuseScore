@@ -22,10 +22,10 @@
 #ifndef MUSE_GLOBAL_UTILS_H
 #define MUSE_GLOBAL_UTILS_H
 
-#include <string>
+#include "types/string.h"
 
 namespace muse {
-std::string pitchToString(int pitch, bool addoctave=true, bool useFlats=false);
+String midiPitchToLocalizedString(int pitch);
 }
 
 #endif // MUSE_GLOBAL_GLOBAL_H

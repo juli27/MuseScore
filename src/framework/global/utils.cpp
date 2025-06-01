@@ -25,48 +25,60 @@
 
 using namespace muse;
 
-static constexpr const char* sharpNotes[] = {
-    QT_TRANSLATE_NOOP("global", "C"),
-    QT_TRANSLATE_NOOP("global", "C♯"),
-    QT_TRANSLATE_NOOP("global", "D"),
-    QT_TRANSLATE_NOOP("global", "D♯"),
-    QT_TRANSLATE_NOOP("global", "E"),
-    QT_TRANSLATE_NOOP("global", "F"),
-    QT_TRANSLATE_NOOP("global", "F♯"),
-    QT_TRANSLATE_NOOP("global", "G"),
-    QT_TRANSLATE_NOOP("global", "G♯"),
-    QT_TRANSLATE_NOOP("global", "A"),
-    QT_TRANSLATE_NOOP("global", "A♯"),
-    QT_TRANSLATE_NOOP("global", "B")
+namespace {
+struct CommentedString {
+    const char* str;
+    const char* comment;
+};
+}
+
+static constexpr CommentedString PITCH_CLASS_NAMES[] = {
+    QT_TRANSLATE_NOOP3("global", "C", "midi pitch"),
+    QT_TRANSLATE_NOOP3("global", "C♯", "midi pitch"),
+    QT_TRANSLATE_NOOP3("global", "D", "midi pitch"),
+    QT_TRANSLATE_NOOP3("global", "D♯", "midi pitch"),
+    QT_TRANSLATE_NOOP3("global", "E", "midi pitch"),
+    QT_TRANSLATE_NOOP3("global", "F", "midi pitch"),
+    QT_TRANSLATE_NOOP3("global", "F♯", "midi pitch"),
+    QT_TRANSLATE_NOOP3("global", "G", "midi pitch"),
+    QT_TRANSLATE_NOOP3("global", "G♯", "midi pitch"),
+    QT_TRANSLATE_NOOP3("global", "A", "midi pitch"),
+    QT_TRANSLATE_NOOP3("global", "A♯", "midi pitch"),
+    QT_TRANSLATE_NOOP3("global", "B", "midi pitch")
 };
 
-static constexpr const char* flatNotes[] = {
-    QT_TRANSLATE_NOOP("global", "C"),
-    QT_TRANSLATE_NOOP("global", "D♭"),
-    QT_TRANSLATE_NOOP("global", "D"),
-    QT_TRANSLATE_NOOP("global", "E♭"),
-    QT_TRANSLATE_NOOP("global", "E"),
-    QT_TRANSLATE_NOOP("global", "F"),
-    QT_TRANSLATE_NOOP("global", "G♭"),
-    QT_TRANSLATE_NOOP("global", "G"),
-    QT_TRANSLATE_NOOP("global", "A♭"),
-    QT_TRANSLATE_NOOP("global", "A"),
-    QT_TRANSLATE_NOOP("global", "B♭"),
-    QT_TRANSLATE_NOOP("global", "B")
+static constexpr CommentedString OCTAVE_NAMES[] = {
+    QT_TRANSLATE_NOOP3("global", "-1", "midi octave"),
+    QT_TRANSLATE_NOOP3("global", "0", "midi octave"),
+    QT_TRANSLATE_NOOP3("global", "1", "midi octave"),
+    QT_TRANSLATE_NOOP3("global", "2", "midi octave"),
+    QT_TRANSLATE_NOOP3("global", "3", "midi octave"),
+    QT_TRANSLATE_NOOP3("global", "4", "midi octave"),
+    QT_TRANSLATE_NOOP3("global", "5", "midi octave"),
+    QT_TRANSLATE_NOOP3("global", "6", "midi octave"),
+    QT_TRANSLATE_NOOP3("global", "7", "midi octave"),
+    QT_TRANSLATE_NOOP3("global", "8", "midi octave"),
+    QT_TRANSLATE_NOOP3("global", "9", "midi octave"),
 };
 
-std::string muse::pitchToString(int pitch, bool addoctave, bool useFlats /* = false */)
+String muse::midiPitchToLocalizedString(int pitch)
 {
     if (pitch < 0 || pitch > 127) {
-        return std::string();
+        return String{};
     }
 
-    auto source = useFlats ? flatNotes : sharpNotes;
+    const auto pitchClassIdx = static_cast<std::size_t>(pitch % 12);
+    const CommentedString& untrPitchClassName = PITCH_CLASS_NAMES[pitchClassIdx];
+    const String pitchClassName = mtrc("global", untrPitchClassName.str, untrPitchClassName.comment);
 
-    int i = pitch % 12;
-    if (addoctave) {
-        int octave = (pitch / 12) - 1;
-        return muse::trc("global", source[i]) + std::to_string(octave);
-    }
-    return muse::trc("global", source[i]);
+    const int octave = (pitch / 12) - 1;
+    const auto octaveNameIdx = static_cast<std::size_t>(octave + 1);
+    const CommentedString& untrOctaveName = OCTAVE_NAMES[octaveNameIdx];
+    const String octaveName = mtrc("global", untrOctaveName.str, untrOctaveName.comment);
+
+    //: %1 is the pitch class (C, C♯, D♭, etc.)
+    //: %2 is the octave designation (-1, 0, 1, etc.)
+    const String pitchName = mtrc("global", "%1%2", "midi pitch");
+
+    return pitchName.arg(pitchClassName, octaveName);
 }
