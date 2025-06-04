@@ -252,6 +252,94 @@ int tpc2alterByKey(int tpc, Key key)
     return (tpc - int(key) - int(Tpc::TPC_MIN) + int(Key::MAX)) / TPC_DELTA_SEMITONE - (int(AccidentalVal::MAX) + 1);
 }
 
+static constexpr std::array TPC_NAMES {
+    QT_TRANSLATE_NOOP("engraving", "F𝄫♭"),
+    QT_TRANSLATE_NOOP("engraving", "C𝄫♭"),
+    QT_TRANSLATE_NOOP("engraving", "G𝄫♭"),
+    QT_TRANSLATE_NOOP("engraving", "D𝄫♭"),
+    QT_TRANSLATE_NOOP("engraving", "A𝄫♭"),
+    QT_TRANSLATE_NOOP("engraving", "E𝄫♭"),
+    QT_TRANSLATE_NOOP("engraving", "B𝄫♭"),
+    QT_TRANSLATE_NOOP("engraving", "F𝄫"),
+    QT_TRANSLATE_NOOP("engraving", "C𝄫"),
+    QT_TRANSLATE_NOOP("engraving", "G𝄫"),
+    QT_TRANSLATE_NOOP("engraving", "D𝄫"),
+    QT_TRANSLATE_NOOP("engraving", "A𝄫"),
+    QT_TRANSLATE_NOOP("engraving", "E𝄫"),
+    QT_TRANSLATE_NOOP("engraving", "B𝄫"),
+    QT_TRANSLATE_NOOP("engraving", "F♭"),
+    QT_TRANSLATE_NOOP("engraving", "C♭"),
+    QT_TRANSLATE_NOOP("engraving", "G♭"),
+    QT_TRANSLATE_NOOP("engraving", "D♭"),
+    QT_TRANSLATE_NOOP("engraving", "A♭"),
+    QT_TRANSLATE_NOOP("engraving", "E♭"),
+    QT_TRANSLATE_NOOP("engraving", "B♭"),
+    QT_TRANSLATE_NOOP("engraving", "F"),
+    QT_TRANSLATE_NOOP("engraving", "C"),
+    QT_TRANSLATE_NOOP("engraving", "G"),
+    QT_TRANSLATE_NOOP("engraving", "D"),
+    QT_TRANSLATE_NOOP("engraving", "A"),
+    QT_TRANSLATE_NOOP("engraving", "E"),
+    QT_TRANSLATE_NOOP("engraving", "B"),
+    QT_TRANSLATE_NOOP("engraving", "F♯"),
+    QT_TRANSLATE_NOOP("engraving", "C♯"),
+    QT_TRANSLATE_NOOP("engraving", "G♯"),
+    QT_TRANSLATE_NOOP("engraving", "D♯"),
+    QT_TRANSLATE_NOOP("engraving", "A♯"),
+    QT_TRANSLATE_NOOP("engraving", "E♯"),
+    QT_TRANSLATE_NOOP("engraving", "B♯"),
+    QT_TRANSLATE_NOOP("engraving", "F𝄪"),
+    QT_TRANSLATE_NOOP("engraving", "C𝄪"),
+    QT_TRANSLATE_NOOP("engraving", "G𝄪"),
+    QT_TRANSLATE_NOOP("engraving", "D𝄪"),
+    QT_TRANSLATE_NOOP("engraving", "A𝄪"),
+    QT_TRANSLATE_NOOP("engraving", "E𝄪"),
+    QT_TRANSLATE_NOOP("engraving", "B𝄪"),
+    QT_TRANSLATE_NOOP("engraving", "F𝄪♯"),
+    QT_TRANSLATE_NOOP("engraving", "C𝄪♯"),
+    QT_TRANSLATE_NOOP("engraving", "G𝄪♯"),
+    QT_TRANSLATE_NOOP("engraving", "D𝄪♯"),
+    QT_TRANSLATE_NOOP("engraving", "A𝄪♯"),
+    QT_TRANSLATE_NOOP("engraving", "E𝄪♯"),
+    QT_TRANSLATE_NOOP("engraving", "B𝄪♯"),
+};
+
+TranslatableString tpcToTranslatableString(const int tpc)
+{
+    IF_ASSERT_FAILED(TPC_MIN <= tpc && tpc <= TPC_MAX) {
+        return TranslatableString();
+    }
+
+    const std::size_t index = tpc - TPC_MIN;
+
+    return TranslatableString("engraving", TPC_NAMES[index]);
+}
+
+// TODO: muse::String can't deal with %01
+static constexpr std::array OCTAVE_DESIGNATIONS {
+    QT_TRANSLATE_NOOP("engraving", "%01-1"),
+    QT_TRANSLATE_NOOP("engraving", "%010"),
+    QT_TRANSLATE_NOOP("engraving", "%011"),
+    QT_TRANSLATE_NOOP("engraving", "%012"),
+    QT_TRANSLATE_NOOP("engraving", "%013"),
+    QT_TRANSLATE_NOOP("engraving", "%014"),
+    QT_TRANSLATE_NOOP("engraving", "%015"),
+    QT_TRANSLATE_NOOP("engraving", "%016"),
+    QT_TRANSLATE_NOOP("engraving", "%017"),
+    QT_TRANSLATE_NOOP("engraving", "%018"),
+    QT_TRANSLATE_NOOP("engraving", "%019"),
+};
+
+TranslatableString tonalPitchToTranslatableString(const int pitch, const int tpc)
+{
+    const AccidentalVal accidental = tpc2alter(tpc);
+    const int octave = (pitch - static_cast<int>(accidental)) / PITCH_DELTA_OCTAVE - 1;
+    const auto octaveIdx = static_cast<std::size_t>(octave + 1);
+
+    return TranslatableString("engraving", OCTAVE_DESIGNATIONS[octaveIdx])
+           .arg(tpcToTranslatableString(tpc));
+}
+
 //---------------------------------------------------------
 //   tpc2name
 //    return note name

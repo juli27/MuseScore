@@ -65,6 +65,9 @@ const int TPCS_PER_STEP           = (Tpc::TPC_MAX - Tpc::TPC_MIN + 1) / STEP_DEL
 
 // pitch2tpc(pitch) replaced by pitch2tpc(pitch, Key::C, Prefer::NEAREST)
 
+TranslatableString tpcToTranslatableString(const int tpc);
+TranslatableString tonalPitchToTranslatableString(int pitch, const int tpc);
+
 enum class Prefer : char {
     FLATS=8, NEAREST=11, SHARPS=13
 };

@@ -860,6 +860,10 @@ String Note::tpcUserName(int tpc, int pitch, bool explicitAccidental, bool full)
 String Note::tpcUserName(const bool explicitAccidental, bool full) const
 {
     String pitchName = tpcUserName(tpc(), epitch() + ottaveCapoFret(), explicitAccidental, full);
+    if (!explicitAccidental && !full) {
+        pitchName = tonalPitchToTranslatableString(epitch() + ottaveCapoFret(), tpc())
+                    .translated();
+    }
 
     if (fixed() && headGroup() == NoteHeadGroup::HEAD_SLASH) {
         // see Note::accessibleInfo(), but we return what we have
