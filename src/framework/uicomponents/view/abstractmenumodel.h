@@ -65,7 +65,7 @@ signals:
 
 protected:
     enum Roles {
-        ItemRole,
+        ItemRole = Qt::UserRole,
 
         UserRole
     };

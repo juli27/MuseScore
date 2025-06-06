@@ -28,64 +28,19 @@ import "internal"
 Loader {
     id: loader
 
+    readonly property StyledMenu menu: loader.item as StyledMenu
+    readonly property bool hasSiblingMenus: false
+    property Item menuAnchorItem: null
+
+    property alias isMenuOpened: loader.active
+
+    property alias accessibleName: itemMenu.accessibleName
+
     signal handleMenuItem(string itemId)
     signal openPrevMenu()
     signal openNextMenu()
     signal opened()
     signal closed(bool force)
-
-    property StyledMenu menu: loader.item as StyledMenu
-    property Item menuAnchorItem: null
-    property bool hasSiblingMenus: false
-
-    property alias isMenuOpened: loader.active
-
-    property string accessibleName: ""
-
-    QtObject {
-        id: prv
-
-        function loadMenu() {
-            loader.active = true
-        }
-
-        function unloadMenu(force) {
-            loader.active = false
-            Qt.callLater(loader.closed, force)
-        }
-    }
-
-    active: false
-
-    sourceComponent: StyledMenu {
-        id: itemMenu
-
-        openPolicies: PopupView.NoActivateFocus
-        focusPolicies: PopupView.NoFocus
-
-        accessibleName: loader.accessibleName
-
-        onHandleMenuItem: function(itemId) {
-            itemMenu.close()
-            Qt.callLater(loader.handleMenuItem, itemId)
-        }
-
-        onOpenPrevMenu: {
-           Qt.callLater(loader.openPrevMenu)
-        }  
-
-        onOpenNextMenu: {
-            Qt.callLater(loader.openNextMenu)
-        }
-
-        onClosed: function(force) {
-            Qt.callLater(prv.unloadMenu, force)
-        }
-
-        onOpened: {
-            focusOnOpenedMenuTimer.start()
-        }
-    }
 
     function open(model, x = -1, y = -1) {
         prv.loadMenu()
@@ -128,7 +83,7 @@ Loader {
 
     function update(model, x = -1, y = -1) {
         var menu = loader.menu
-        if (!Boolean(menu)) {
+        if (!menu) {
             return
         }
 
@@ -145,6 +100,49 @@ Loader {
         menu.model = model
 
         menu.calculateSize()
+    }
+
+    active: false
+
+    sourceComponent: StyledMenu {
+        id: itemMenu
+
+        openPolicies: PopupView.NoActivateFocus
+        focusPolicies: PopupView.NoFocus
+
+        onHandleMenuItem: function(itemId) {
+            itemMenu.close()
+            Qt.callLater(loader.handleMenuItem, itemId)
+        }
+
+        onOpenPrevMenu: {
+           Qt.callLater(loader.openPrevMenu)
+        }
+
+        onOpenNextMenu: {
+            Qt.callLater(loader.openNextMenu)
+        }
+
+        onClosed: function(force) {
+            Qt.callLater(prv.unloadMenu, force)
+        }
+
+        onOpened: {
+            focusOnOpenedMenuTimer.start()
+        }
+    }
+
+    QtObject {
+        id: prv
+
+        function loadMenu() {
+            loader.active = true
+        }
+
+        function unloadMenu(force) {
+            loader.active = false
+            Qt.callLater(loader.closed, force)
+        }
     }
 
     Timer {

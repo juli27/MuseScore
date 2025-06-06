@@ -21,8 +21,6 @@
  */
 import QtQuick 2.15
 import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import QtQuick.Window 2.15
 
 import Muse.Ui 1.0
 import Muse.UiComponents 1.0
@@ -35,14 +33,17 @@ MenuView {
     property int preferredAlign: Qt.AlignRight // Left, HCenter, Right
     property bool hasSiblingMenus: loader.hasSiblingMenus
 
-    signal handleMenuItem(string itemId)
-    signal openPrevMenu()
-    signal openNextMenu()
-
     property alias width: content.width
     property alias height: content.height
 
     property string accessibleName: ""
+
+    property var subMenuLoader: null
+    property MenuMetrics menuMetrics: null
+
+    signal handleMenuItem(string itemId)
+    signal openPrevMenu()
+    signal openNextMenu()
 
     signal loaded()
 
@@ -89,18 +90,15 @@ MenuView {
         y = parent.height
     }
 
-    onAboutToClose: function(closeEvent) {
-        closeSubMenu()
-    }
-
     function closeSubMenu() {
         if (root.subMenuLoader.isMenuOpened) {
             root.subMenuLoader.close()
         }
     }
 
-    property var subMenuLoader: null
-    property MenuMetrics menuMetrics: null
+    onAboutToClose: function(closeEvent) {
+        closeSubMenu()
+    }
 
     contentItem: PopupContent {
         id: content
