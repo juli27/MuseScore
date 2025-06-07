@@ -19,9 +19,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
-#ifndef MIDISHARED_MIDIFILE_H
-#define MIDISHARED_MIDIFILE_H
+#pragma once
 
 #include <vector>
 #include <QIODevice>
@@ -29,67 +27,57 @@
 #include "../midishared/midievent.h"
 
 namespace mu::iex::midi {
-//---------------------------------------------------------
-//   MidiType
-//---------------------------------------------------------
-
 enum class MidiType : char {
     UNKNOWN = 0, GM = 1, GS = 2, XG = 4
 };
 
-class MidiFile;
-
-//---------------------------------------------------------
-//   MidiTrack
-//---------------------------------------------------------
-
 class MidiTrack
 {
-    std::multimap<int, MidiEvent> _events;
-    int _outChannel;
-    int _outPort;
-    bool _drumTrack;
-
 public:
-    MidiTrack();
-    ~MidiTrack();
+    MidiTrack() = default;
 
     bool empty() const;
-    const std::multimap<int, MidiEvent>& events() const { return _events; }
-    std::multimap<int, MidiEvent>& events() { return _events; }
+    const std::multimap<int, MidiEvent>& events() const { return m_events; }
+    std::multimap<int, MidiEvent>& events() { return m_events; }
 
-    int outChannel() const { return _outChannel; }
+    int outChannel() const { return m_outChannel; }
     void setOutChannel(int n);
-    int outPort() const { return _outPort; }
-    void setOutPort(int n) { _outPort = n; }
+    int outPort() const { return m_outPort; }
+    void setOutPort(int n) { m_outPort = n; }
 
-    bool drumTrack() const { return _drumTrack; }
+    bool drumTrack() const { return m_drumTrack; }
 
     void insert(int tick, const MidiEvent&);
     void mergeNoteOnOffAndFindMidiType(MidiType* mt);
-};
 
-//---------------------------------------------------------
-//   MidiFile
-//---------------------------------------------------------
+private:
+    std::multimap<int, MidiEvent> m_events;
+    int m_outChannel = -1;
+    int m_outPort = -1;
+    bool m_drumTrack = false;
+};
 
 class MidiFile
 {
-    QIODevice* fp;
-    std::vector<MidiTrack> _tracks;
-    int _division;
-    bool _isDivisionInTps;         ///< ticks per second, alternative - ticks per beat
-    int _format;                 ///< midi file format (0-2)
-    bool _noRunningStatus;       ///< do not use running status on output
-    MidiType _midiType;
+public:
+    MidiFile() = default;
 
-    // values used during read()
-    int status;                  ///< running status
-    int sstatus;                 ///< running status (not reset after meta or sysex events)
-    int click;                   ///< current tick position in file
-    qint64 curPos;               ///< current file byte position
+    bool read(QIODevice*);
+    bool write(QIODevice*);
 
-    void writeEvent(const MidiEvent& event);
+    std::vector<MidiTrack>& tracks() { return m_tracks; }
+    const std::vector<MidiTrack>& tracks() const { return m_tracks; }
+
+    MidiType midiType() const { return m_midiType; }
+    void setMidiType(MidiType mt) { m_midiType = mt; }
+
+    int format() const { return m_format; }
+    void setFormat(int fmt) { m_format = fmt; }
+
+    int division() const { return m_division; }
+    bool isDivisionInTps() const { return m_isDivisionInTps; }
+    void setDivision(int val) { m_division = val; }
+    void separateChannel();
 
 protected:
     // write
@@ -109,27 +97,23 @@ protected:
     bool readEvent(MidiEvent*);
     bool readTrack();
 
-    void resetRunningStatus() { status = -1; }
+    void resetRunningStatus() { m_status = -1; }
 
-public:
-    MidiFile();
-    bool read(QIODevice*);
-    bool write(QIODevice*);
+private:
+    QIODevice* m_fp = nullptr;
+    std::vector<MidiTrack> m_tracks;
+    int m_division = 0;
+    bool m_isDivisionInTps = false; ///< ticks per second, alternative - ticks per beat
+    int m_format = 1;               ///< midi file format (0-2)
+    bool m_noRunningStatus = false; ///< do not use running status on output
+    MidiType m_midiType = MidiType::UNKNOWN;
 
-    std::vector<MidiTrack>& tracks() { return _tracks; }
-    const std::vector<MidiTrack>& tracks() const { return _tracks; }
+    // values used during read()
+    int m_status = 0;    ///< running status
+    int m_sstatus = 0;   ///< running status (not reset after meta or sysex events)
+    int m_click = 0;     ///< current tick position in file
+    qint64 m_curPos = 0; ///< current file byte position
 
-    MidiType midiType() const { return _midiType; }
-    void setMidiType(MidiType mt) { _midiType = mt; }
-
-    int format() const { return _format; }
-    void setFormat(int fmt) { _format = fmt; }
-
-    int division() const { return _division; }
-    bool isDivisionInTps() const { return _isDivisionInTps; }
-    void setDivision(int val) { _division = val; }
-    void separateChannel();
+    void writeEvent(const MidiEvent& event);
 };
 }
-
-#endif // MIDISHARED_MIDIFILE_H
