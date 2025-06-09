@@ -78,8 +78,10 @@ set(MODULE_SRC
     ${CMAKE_CURRENT_LIST_DIR}/modularity/imoduleinterface.h
     ${CMAKE_CURRENT_LIST_DIR}/modularity/imodulesetup.h
 
+    ${CMAKE_CURRENT_LIST_DIR}/thirdparty/expected/expected.h
     ${CMAKE_CURRENT_LIST_DIR}/types/bytearray.cpp
     ${CMAKE_CURRENT_LIST_DIR}/types/bytearray.h
+    ${CMAKE_CURRENT_LIST_DIR}/types/expected.h
     ${CMAKE_CURRENT_LIST_DIR}/types/string.cpp
     ${CMAKE_CURRENT_LIST_DIR}/types/string.h
     ${CMAKE_CURRENT_LIST_DIR}/types/datetime.cpp
@@ -143,6 +145,8 @@ set(MODULE_SRC
     ${CMAKE_CURRENT_LIST_DIR}/serialization/json.h
     ${CMAKE_CURRENT_LIST_DIR}/serialization/xmldom.cpp
     ${CMAKE_CURRENT_LIST_DIR}/serialization/xmldom.h
+    ${CMAKE_CURRENT_LIST_DIR}/serialization/binaryreader.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/serialization/binaryreader.h
 
     ${CMAKE_CURRENT_LIST_DIR}/concurrency/taskscheduler.h
     ${CMAKE_CURRENT_LIST_DIR}/concurrency/concurrent.h

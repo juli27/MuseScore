@@ -21,10 +21,17 @@
  */
 #pragma once
 
+#include <cstdint>
+#include <map>
 #include <vector>
+
 #include <QIODevice>
 
-#include "../midishared/midievent.h"
+#include "global/io/iodevice.h"
+#include "global/types/expected.h"
+#include "global/types/string.h"
+
+#include "midievent.h"
 
 namespace mu::iex::midi {
 enum class MidiType : char {
@@ -60,9 +67,17 @@ private:
 class MidiFile
 {
 public:
-    MidiFile() = default;
+    enum class Format : std::uint16_t {
+        SingleTrack = 0,
+        SimultaneousMultiTrack = 1,
+        IndependentMultiTrack = 2,
+    };
 
-    bool read(QIODevice*);
+    static muse::Expected<MidiFile, muse::String> read(muse::io::IODevice&);
+
+    MidiFile() = default;
+    MidiFile(std::vector<MidiTrack>, int division, bool isDivisionInTps);
+
     bool write(QIODevice*);
 
     std::vector<MidiTrack>& tracks() { return m_tracks; }
@@ -71,8 +86,8 @@ public:
     MidiType midiType() const { return m_midiType; }
     void setMidiType(MidiType mt) { m_midiType = mt; }
 
-    int format() const { return m_format; }
-    void setFormat(int fmt) { m_format = fmt; }
+    Format format() { return m_format; }
+    void setFormat(Format fmt) { m_format = fmt; }
 
     int division() const { return m_division; }
     bool isDivisionInTps() const { return m_isDivisionInTps; }
@@ -89,14 +104,6 @@ protected:
     void put(unsigned char c) { write(&c, 1); }
     void writeStatus(int type, int channel);
 
-    // read
-    void read(void*, qint64);
-    int getvl();
-    int readShort();
-    int readLong();
-    bool readEvent(MidiEvent*);
-    bool readTrack();
-
     void resetRunningStatus() { m_status = -1; }
 
 private:
@@ -104,15 +111,11 @@ private:
     std::vector<MidiTrack> m_tracks;
     int m_division = 0;
     bool m_isDivisionInTps = false; ///< ticks per second, alternative - ticks per beat
-    int m_format = 1;               ///< midi file format (0-2)
-    bool m_noRunningStatus = false; ///< do not use running status on output
+    Format m_format = Format::SimultaneousMultiTrack;
     MidiType m_midiType = MidiType::UNKNOWN;
 
-    // values used during read()
+    // values used during write()
     int m_status = 0;    ///< running status
-    int m_sstatus = 0;   ///< running status (not reset after meta or sysex events)
-    int m_click = 0;     ///< current tick position in file
-    qint64 m_curPos = 0; ///< current file byte position
 
     void writeEvent(const MidiEvent& event);
 };
