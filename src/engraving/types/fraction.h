@@ -35,41 +35,68 @@
 namespace mu::engraving {
 class Fraction
 {
-    // ensure 64 bit to avoid overflows in comparisons
-    int64_t m_numerator = 0;
-    int64_t m_denominator = 1;
-
 public:
+    /// Use this when you need to initialize a Fraction to an arbitrary high value
+    static constexpr Fraction max() { return Fraction(std::numeric_limits<int>::max(), 1); }
+
+    // A very small fraction, corresponds to 1 MIDI tick
+    static constexpr Fraction eps() { return Fraction(1, Constants::DIVISION * 4); }
+
+    static constexpr Fraction fromTicks(int ticks)
+    {
+        if (ticks == -1) {
+            return Fraction(-1, 1); // HACK
+        }
+        return Fraction(ticks, Constants::DIVISION * 4).reduced();
+    }
+
+    static Fraction fromString(const muse::String& str, bool* ok = nullptr)
+    {
+        const size_t i = str.indexOf(u'/');
+        if (i == muse::nidx) {
+            return Fraction(str.toInt(ok), 1);
+        }
+
+        int numerator = str.left(i).toInt(ok);
+        if (ok && !*ok) {
+            return Fraction();
+        }
+
+        int denominator = str.mid(i + 1).toInt(ok);
+        if (ok && !*ok) {
+            return Fraction();
+        }
+
+        return Fraction(numerator, denominator);
+    }
+
     // no implicit conversion from int to Fraction:
     constexpr Fraction() = default;
-    constexpr Fraction(int z, int n)
-        : m_numerator{n < 0 ? -z : z}, m_denominator{n < 0 ? -n : n} {}
+    constexpr Fraction(int n, int d)
+        : m_numerator{d < 0 ? -n : n}, m_denominator{d < 0 ? -d : d} {}
 
     constexpr int numerator() const { return static_cast<int>(m_numerator); }
     constexpr int denominator() const { return static_cast<int>(m_denominator); }
 
-    /// Use this when you need to initialize a Fraction to an arbitrary high value
-    static constexpr Fraction max() { return Fraction(std::numeric_limits<int>::max(), 1); }
-
-    constexpr void setNumerator(int v) { m_numerator = v; }
-    constexpr void setDenominator(int v)
+    constexpr void setNumerator(int n) { m_numerator = n; }
+    constexpr void setDenominator(int d)
     {
-        if (v < 0) {
+        if (d < 0) {
             m_numerator = -m_numerator;
-            m_denominator = -v;
+            m_denominator = -d;
         } else {
-            m_denominator = v;
+            m_denominator = d;
         }
     }
 
-    constexpr void set(int z, int n)
+    constexpr void set(int n, int d)
     {
-        if (n < 0) {
-            m_numerator = -z;
-            m_denominator = -n;
+        if (d < 0) {
+            m_numerator = -n;
+            m_denominator = -d;
         } else {
-            m_numerator = z;
-            m_denominator = n;
+            m_numerator = n;
+            m_denominator = d;
         }
     }
 
@@ -102,7 +129,7 @@ public:
     constexpr void reduce()
     {
         const int64_t g = std::gcd(m_numerator, m_denominator);
-        if (g) {
+        if (g != 0) {
             m_numerator /= g;
             m_denominator /= g;
         }
@@ -110,11 +137,10 @@ public:
 
     constexpr Fraction reduced() const
     {
-        const int64_t g = std::gcd(m_numerator, m_denominator);
-        if (g) {
-            return Fraction(static_cast<int>(m_numerator / g), static_cast<int>(m_denominator / g));
-        }
-        return Fraction(m_numerator, m_denominator);
+        Fraction f = *this;
+        f.reduce();
+
+        return f;
     }
 
     // comparison
@@ -245,39 +271,14 @@ public:
         return static_cast<int>(result);
     }
 
-    static constexpr Fraction fromTicks(int ticks)
-    {
-        if (ticks == -1) {
-            return Fraction(-1, 1); // HACK
-        }
-        return Fraction(ticks, Constants::DIVISION * 4).reduced();
-    }
-
-    // A very small fraction, corresponds to 1 MIDI tick
-    static constexpr Fraction eps() { return Fraction(1, Constants::DIVISION * 4); }
-
     muse::String toString() const { return muse::String(u"%1/%2").arg(m_numerator, m_denominator); }
-    static Fraction fromString(const muse::String& str, bool* ok = nullptr)
-    {
-        const size_t i = str.indexOf(u'/');
-        if (i == muse::nidx) {
-            return Fraction(str.toInt(ok), 1);
-        }
-
-        int numerator = str.left(i).toInt(ok);
-        if (ok && !*ok) {
-            return Fraction();
-        }
-
-        int denominator = str.mid(i + 1).toInt(ok);
-        if (ok && !*ok) {
-            return Fraction();
-        }
-
-        return Fraction(numerator, denominator);
-    }
 
     constexpr double toDouble() const { return static_cast<double>(m_numerator) / static_cast<double>(m_denominator); }
+
+private:
+    // ensure 64 bit to avoid overflows in comparisons
+    int64_t m_numerator = 0;
+    int64_t m_denominator = 1;
 };
 
 constexpr Fraction operator*(const Fraction& f, int v) { return Fraction(f) *= v; }
