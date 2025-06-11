@@ -1320,10 +1320,10 @@ void Harmony::renderActionNote(HarmonyRenderCtx& ctx)
     const Key key = st ? st->key(tick()) : Key::INVALID;
 
     String c;
-    AccidentalVal acc;
 
     if (m_harmonyType == HarmonyType::STANDARD) {
-        tpc2name(ctx.tpc, ctx.noteSpelling, ctx.noteCase, c, acc);
+        AccidentalVal acc = tpc2alter(ctx.tpc);
+        c = tpcToName(ctx.tpc, ctx.noteSpelling, ctx.noteCase, acc);
     } else if (m_harmonyType == HarmonyType::NASHVILLE) {
         String accStr;
         tpc2Function(ctx.tpc, key, accStr, c);

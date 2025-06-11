@@ -265,19 +265,76 @@ String tpc2name(int tpc, NoteSpellingType noteSpelling, NoteCaseType noteCase, b
     return s + (explicitAccidental ? u" " : u"") + acc;
 }
 
-//---------------------------------------------------------
-//   tpc2name
-//---------------------------------------------------------
+// static String accidentalToName(const AccidentalVal acc, const NoteSpellingType noteSpelling, const int tpc,
+//                                const bool full)
+// {
+//     String name = {};
+
+//     switch (acc) {
+//     case AccidentalVal::FLAT3:
+//         return muse::mtrc("engraving", TConv::userName(AccidentalVal::FLAT3, full));
+
+//     case AccidentalVal::FLAT2:
+//             return muse::mtrc("engraving", TConv::userName(AccidentalVal::FLAT2, full));
+
+//     case AccidentalVal::FLAT:
+//             return muse::mtrc("engraving", TConv::userName(AccidentalVal::FLAT, full));
+
+//     case  AccidentalVal::NATURAL:
+//         return u"";
+
+//     case  AccidentalVal::SHARP:
+//         if (explicitAccidental) {
+//             name = muse::mtrc("engraving", TConv::userName(AccidentalVal::SHARP, full));
+//         } else {
+//             name = (noteSpelling == NoteSpellingType::GERMAN_PURE) ? u"is" : u"#";
+//         }
+//         break;
+//     case  AccidentalVal::SHARP2:
+//         if (explicitAccidental) {
+//             name = muse::mtrc("engraving", TConv::userName(AccidentalVal::SHARP2, full));
+//         } else {
+//             name = (noteSpelling == NoteSpellingType::GERMAN_PURE) ? u"isis" : u"##";
+//         }
+//         break;
+//     case AccidentalVal::SHARP3:
+//         if (explicitAccidental) {
+//             name = muse::mtrc("engraving", TConv::userName(AccidentalVal::SHARP3, full));
+//         } else {
+//             name = (noteSpelling == NoteSpellingType::GERMAN_PURE) ? u"isisis" : u"###";
+//         }
+//         break;
+//     default:
+//         LOGD("tpc2name(%d): acc %d", tpc, static_cast<int>(acc));
+//         UNREACHABLE;
+//         name = u"";
+//         break;
+//     }
+// }
+
+static String accidentalToName(const AccidentalVal acc, bool full)
+{
+    if (acc == AccidentalVal::NATURAL) {
+        return u"";
+    }
+
+    return muse::mtrc("engraving", TConv::userName(acc, full));
+}
 
 void tpc2name(int tpc, NoteSpellingType noteSpelling, NoteCaseType noteCase, String& s, String& acc, bool explicitAccidental, bool full)
 {
-    AccidentalVal accVal;
-    tpc2name(tpc, noteSpelling, noteCase, s, accVal);
+    AccidentalVal accVal = tpc2alter(tpc);
+    s = tpcToName(tpc, noteSpelling, noteCase, accVal);
+
+    if (explicitAccidental) {
+        acc = accidentalToName(accVal, full);
+
+        return;
+    }
+
     switch (accVal) {
     case AccidentalVal::FLAT3:
-        if (explicitAccidental) {
-            acc = muse::mtrc("engraving", TConv::userName(AccidentalVal::FLAT3, full));
-        } else if (noteSpelling == NoteSpellingType::GERMAN_PURE) {
+        if (noteSpelling == NoteSpellingType::GERMAN_PURE) {
             switch (tpc) {
             case TPC_A_BBB: acc = u"sasas";
                 break;
@@ -290,9 +347,7 @@ void tpc2name(int tpc, NoteSpellingType noteSpelling, NoteCaseType noteCase, Str
         }
         break;
     case AccidentalVal::FLAT2:
-        if (explicitAccidental) {
-            acc = muse::mtrc("engraving", TConv::userName(AccidentalVal::FLAT2, full));
-        } else if (noteSpelling == NoteSpellingType::GERMAN_PURE) {
+        if (noteSpelling == NoteSpellingType::GERMAN_PURE) {
             switch (tpc) {
             case TPC_A_BB: acc = u"sas";
                 break;
@@ -305,36 +360,23 @@ void tpc2name(int tpc, NoteSpellingType noteSpelling, NoteCaseType noteCase, Str
         }
         break;
     case AccidentalVal::FLAT:
-        if (explicitAccidental) {
-            acc = muse::mtrc("engraving", TConv::userName(AccidentalVal::FLAT, full));
-        } else if (noteSpelling == NoteSpellingType::GERMAN_PURE) {
+        if (noteSpelling == NoteSpellingType::GERMAN_PURE) {
             acc = (tpc == TPC_A_B || tpc == TPC_E_B) ? u"s" : u"es";
         } else {
             acc = u"b";
         }
         break;
-    case  AccidentalVal::NATURAL: acc = u"";
+    case AccidentalVal::NATURAL:
+        acc = u"";
         break;
-    case  AccidentalVal::SHARP:
-        if (explicitAccidental) {
-            acc = muse::mtrc("engraving", TConv::userName(AccidentalVal::SHARP, full));
-        } else {
-            acc = (noteSpelling == NoteSpellingType::GERMAN_PURE) ? u"is" : u"#";
-        }
+    case AccidentalVal::SHARP:
+        acc = (noteSpelling == NoteSpellingType::GERMAN_PURE) ? u"is" : u"#";
         break;
-    case  AccidentalVal::SHARP2:
-        if (explicitAccidental) {
-            acc = muse::mtrc("engraving", TConv::userName(AccidentalVal::SHARP2, full));
-        } else {
-            acc = (noteSpelling == NoteSpellingType::GERMAN_PURE) ? u"isis" : u"##";
-        }
+    case AccidentalVal::SHARP2:
+        acc = (noteSpelling == NoteSpellingType::GERMAN_PURE) ? u"isis" : u"##";
         break;
     case AccidentalVal::SHARP3:
-        if (explicitAccidental) {
-            acc = muse::mtrc("engraving", TConv::userName(AccidentalVal::SHARP3, full));
-        } else {
-            acc = (noteSpelling == NoteSpellingType::GERMAN_PURE) ? u"isisis" : u"###";
-        }
+        acc = (noteSpelling == NoteSpellingType::GERMAN_PURE) ? u"isisis" : u"###";
         break;
     default:
         LOGD("tpc2name(%d): acc %d", tpc, static_cast<int>(accVal));
@@ -343,52 +385,57 @@ void tpc2name(int tpc, NoteSpellingType noteSpelling, NoteCaseType noteCase, Str
     }
 }
 
-//---------------------------------------------------------
-//   tpc2name
-//---------------------------------------------------------
-
-void tpc2name(int tpc, NoteSpellingType noteSpelling, NoteCaseType noteCase, String& s, AccidentalVal& acc)
+String tpcToName(const int tpc, const NoteSpellingType noteSpelling, const NoteCaseType noteCase, AccidentalVal& acc)
 {
-    const char names[]  = "FCGDAEB";
-    const char gnames[] = "FCGDAEH";
+    constexpr char16_t names[] = u"FCGDAEB";
+    constexpr char16_t gnames[] = u"FCGDAEH";
     const String snames[] = { u"Fa", u"Do", u"Sol", u"Re", u"La", u"Mi", u"Si" };
 
-    acc = tpc2alter(tpc);
-    int idx = (tpc - Tpc::TPC_MIN) % TPC_DELTA_SEMITONE;
+    String name = {};
+    const int idx = (tpc - Tpc::TPC_MIN) % TPC_DELTA_SEMITONE;
     switch (noteSpelling) {
     case NoteSpellingType::GERMAN:
-    case NoteSpellingType::GERMAN_PURE:
-        s = String(Char::fromAscii(gnames[idx]));
-        if (s == "H" && acc == AccidentalVal::FLAT) {
-            s = u"B";
+    case NoteSpellingType::GERMAN_PURE: {
+        const Char c = gnames[idx];
+        if (c == u'H' && acc == AccidentalVal::FLAT) {
+            name = u"B";
             if (noteSpelling == NoteSpellingType::GERMAN_PURE) {
                 acc = AccidentalVal::NATURAL;
             }
+        } else {
+            name = String(c);
         }
-        break;
-    case NoteSpellingType::SOLFEGGIO:
-        s = snames[idx];
-        break;
-    case NoteSpellingType::FRENCH:
-        s = snames[idx];
-        if (s == u"Re") {
-            s = u"Ré";
-        }
-        break;
-    default:
-        s = String(Char::fromAscii(names[idx]));
         break;
     }
-    switch (noteCase) {
-    case NoteCaseType::LOWER: s = s.toLower();
+    case NoteSpellingType::SOLFEGGIO:
+        name = snames[idx];
         break;
-    case NoteCaseType::UPPER: s = s.toUpper();
+    case NoteSpellingType::FRENCH:
+        name = snames[idx];
+        if (name == u"Re") {
+            name = u"Ré";
+        }
+        break;
+    case NoteSpellingType::STANDARD:
+    default:
+        name = String(names[idx]);
+        break;
+    }
+
+    switch (noteCase) {
+    case NoteCaseType::LOWER:
+        name = name.toLower();
+        break;
+    case NoteCaseType::UPPER:
+        name = name.toUpper();
         break;
     case NoteCaseType::CAPITAL:
     case NoteCaseType::AUTO:
     default:
         break;
     }
+
+    return name;
 }
 
 //---------------------------------------------------------

@@ -840,26 +840,27 @@ int Note::tpc() const
 
 String Note::tpcUserName(int tpc, int pitch, bool explicitAccidental, bool full)
 {
-    String pitchStr = tpc2name(tpc, NoteSpellingType::STANDARD, NoteCaseType::AUTO, explicitAccidental, full);
+    String tpcName = tpc2name(tpc, NoteSpellingType::STANDARD, NoteCaseType::AUTO, explicitAccidental, full);
     if (!explicitAccidental) {
-        pitchStr.replace(u"b", u"♭");
-        pitchStr.replace(u"#", u"♯");
+        tpcName.replace(u"b", u"♭");
+        tpcName.replace(u"#", u"♯");
     }
 
-    pitchStr = muse::mtrc("global", pitchStr);
+    tpcName = muse::mtrc("global", tpcName);
 
-    const String octaveStr = String::number(((pitch - static_cast<int>(tpc2alter(tpc))) / PITCH_DELTA_OCTAVE) - 1);
+    const int octave = ((pitch - static_cast<int>(tpc2alter(tpc))) / PITCH_DELTA_OCTAVE) - 1;
+    const String octaveStr = String::number(octave);
 
-    return pitchStr + (explicitAccidental ? u" " : u"") + octaveStr;
+    return tpcName + (explicitAccidental ? u" " : u"") + octaveStr;
 }
 
 //---------------------------------------------------------
 //   tpcUserName
 //---------------------------------------------------------
 
-String Note::tpcUserName(const bool explicitAccidental, bool full) const
+String Note::tpcUserName(const bool explicitAccidental, const bool full) const
 {
-    String pitchName = tpcUserName(tpc(), epitch() + ottaveCapoFret(), explicitAccidental, full);
+    const String pitchName = tpcUserName(tpc(), epitch() + ottaveCapoFret(), explicitAccidental, full);
 
     if (fixed() && headGroup() == NoteHeadGroup::HEAD_SLASH) {
         // see Note::accessibleInfo(), but we return what we have
@@ -3330,9 +3331,21 @@ String Note::accessibleInfo() const
         return String();
     }
 
-    String duration = chord()->durationUserName();
-    String voice = muse::mtrc("engraving", "Voice: %1").arg(track() % VOICES + 1);
     String pitchName;
+    const Drumset* drumset = part()->instrument(chord()->tick())->drumset();
+    if (fixed() && headGroup() == NoteHeadGroup::HEAD_SLASH) {
+        pitchName = chord()->noStem() ? muse::mtrc("engraving", "Beat slash") : muse::mtrc("engraving", "Rhythm slash");
+    } else if (staff()->isDrumStaff(tick()) && drumset) {
+        pitchName = drumset->translatedName(pitch());
+    } else if (staff()->isTabStaff(tick())) {
+        pitchName = muse::mtrc("engraving", "%1; String: %2; Fret: %3")
+                    .arg(tpcUserName(), String::number(string() + 1), String::number(fret()));
+    } else {
+        pitchName = tpcUserName();
+    }
+
+    const String duration = chord()->durationUserName();
+    const String voice = muse::mtrc("engraving", "Voice: %1").arg(track() % VOICES + 1);
     String onofftime;
     if (!m_playEvents.empty()) {
         int on = m_playEvents[0].ontime();
@@ -3341,18 +3354,6 @@ String Note::accessibleInfo() const
             //: Note-on and note-off times relative to note duration, expressed in thousandths (per mille)
             onofftime = u" " + muse::mtrc("engraving", "(on %1‰ off %2‰)").arg(on, off);
         }
-    }
-
-    const Drumset* drumset = part()->instrument(chord()->tick())->drumset();
-    if (fixed() && headGroup() == NoteHeadGroup::HEAD_SLASH) {
-        pitchName = chord()->noStem() ? muse::mtrc("engraving", "Beat slash") : muse::mtrc("engraving", "Rhythm slash");
-    } else if (staff()->isDrumStaff(tick()) && drumset) {
-        pitchName = drumset->translatedName(pitch());
-    } else if (staff()->isTabStaff(tick())) {
-        pitchName = muse::mtrc("engraving", "%1; String: %2; Fret: %3")
-                    .arg(tpcUserName(false), String::number(string() + 1), String::number(fret()));
-    } else {
-        pitchName = tpcUserName(false);
     }
 
     return muse::mtrc("engraving", "%1; Pitch: %2; Duration: %3%4%5")

@@ -19,14 +19,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
-#ifndef MU_ENGRAVING_PITCHSPELLING_H
-#define MU_ENGRAVING_PITCHSPELLING_H
+#pragma once
 
 #include <vector>
 
-#include "types/string.h"
-#include "../types/types.h"
+#include "engraving/types/types.h"
 
 namespace mu::engraving {
 class MidiNote;
@@ -79,7 +76,7 @@ extern int tpc(int idx, int pitch, int opt);
 extern String tpc2name(int tpc, NoteSpellingType spelling, NoteCaseType noteCase, bool explicitAccidental = false, bool full = false);
 extern void tpc2name(int tpc, NoteSpellingType noteSpelling, NoteCaseType noteCase, String& s, String& acc, bool explicitAccidental = false,
                      bool full = false);
-extern void tpc2name(int tpc, NoteSpellingType noteSpelling, NoteCaseType noteCase, String& s, AccidentalVal& acc);
+String tpcToName(const int tpc, NoteSpellingType noteSpelling, NoteCaseType noteCase, AccidentalVal& acc);
 extern int step2tpc(const String& stepName, AccidentalVal alter);
 extern int step2tpc(int step);
 extern int step2tpc(int step, AccidentalVal alter);
@@ -117,4 +114,3 @@ extern Char tpc2stepName(int tpc);
 extern bool tpcIsValid(int val);
 inline bool pitchIsValid(int pitch) { return pitch >= 0 && pitch <= 127; }
 } // namespace mu::engraving
-#endif
