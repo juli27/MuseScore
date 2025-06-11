@@ -252,6 +252,98 @@ int tpc2alterByKey(int tpc, Key key)
     return (tpc - int(key) - int(Tpc::TPC_MIN) + int(Key::MAX)) / TPC_DELTA_SEMITONE - (int(AccidentalVal::MAX) + 1);
 }
 
+//! NOTE "global" context to preserve existing translations
+static constexpr std::array TPC_NAMES {
+    QT_TRANSLATE_NOOP("global", "F𝄫♭"),
+    QT_TRANSLATE_NOOP("global", "C𝄫♭"),
+    QT_TRANSLATE_NOOP("global", "G𝄫♭"),
+    QT_TRANSLATE_NOOP("global", "D𝄫♭"),
+    QT_TRANSLATE_NOOP("global", "A𝄫♭"),
+    QT_TRANSLATE_NOOP("global", "E𝄫♭"),
+    QT_TRANSLATE_NOOP("global", "B𝄫♭"),
+    QT_TRANSLATE_NOOP("global", "F𝄫"),
+    QT_TRANSLATE_NOOP("global", "C𝄫"),
+    QT_TRANSLATE_NOOP("global", "G𝄫"),
+    QT_TRANSLATE_NOOP("global", "D𝄫"),
+    QT_TRANSLATE_NOOP("global", "A𝄫"),
+    QT_TRANSLATE_NOOP("global", "E𝄫"),
+    QT_TRANSLATE_NOOP("global", "B𝄫"),
+    QT_TRANSLATE_NOOP("global", "F♭"),
+    QT_TRANSLATE_NOOP("global", "C♭"),
+    QT_TRANSLATE_NOOP("global", "G♭"),
+    QT_TRANSLATE_NOOP("global", "D♭"),
+    QT_TRANSLATE_NOOP("global", "A♭"),
+    QT_TRANSLATE_NOOP("global", "E♭"),
+    QT_TRANSLATE_NOOP("global", "B♭"),
+    QT_TRANSLATE_NOOP("global", "F"),
+    QT_TRANSLATE_NOOP("global", "C"),
+    QT_TRANSLATE_NOOP("global", "G"),
+    QT_TRANSLATE_NOOP("global", "D"),
+    QT_TRANSLATE_NOOP("global", "A"),
+    QT_TRANSLATE_NOOP("global", "E"),
+    QT_TRANSLATE_NOOP("global", "B"),
+    QT_TRANSLATE_NOOP("global", "F♯"),
+    QT_TRANSLATE_NOOP("global", "C♯"),
+    QT_TRANSLATE_NOOP("global", "G♯"),
+    QT_TRANSLATE_NOOP("global", "D♯"),
+    QT_TRANSLATE_NOOP("global", "A♯"),
+    QT_TRANSLATE_NOOP("global", "E♯"),
+    QT_TRANSLATE_NOOP("global", "B♯"),
+    QT_TRANSLATE_NOOP("global", "F𝄪"),
+    QT_TRANSLATE_NOOP("global", "C𝄪"),
+    QT_TRANSLATE_NOOP("global", "G𝄪"),
+    QT_TRANSLATE_NOOP("global", "D𝄪"),
+    QT_TRANSLATE_NOOP("global", "A𝄪"),
+    QT_TRANSLATE_NOOP("global", "E𝄪"),
+    QT_TRANSLATE_NOOP("global", "B𝄪"),
+    QT_TRANSLATE_NOOP("global", "F𝄪♯"),
+    QT_TRANSLATE_NOOP("global", "C𝄪♯"),
+    QT_TRANSLATE_NOOP("global", "G𝄪♯"),
+    QT_TRANSLATE_NOOP("global", "D𝄪♯"),
+    QT_TRANSLATE_NOOP("global", "A𝄪♯"),
+    QT_TRANSLATE_NOOP("global", "E𝄪♯"),
+    QT_TRANSLATE_NOOP("global", "B𝄪♯"),
+};
+
+TranslatableString tpcToTranslatableString(const int tpc)
+{
+    IF_ASSERT_FAILED(TPC_MIN <= tpc && tpc <= TPC_MAX) {
+        return TranslatableString();
+    }
+
+    const std::size_t index = tpc - TPC_MIN;
+
+    return TranslatableString("global", TPC_NAMES[index]);
+}
+
+static constexpr std::array OCTAVE_DESIGNATIONS {
+    QT_TRANSLATE_NOOP("engraving", "%1-1"),
+    QT_TRANSLATE_NOOP("engraving", "%10"),
+    QT_TRANSLATE_NOOP("engraving", "%11"),
+    QT_TRANSLATE_NOOP("engraving", "%12"),
+    QT_TRANSLATE_NOOP("engraving", "%13"),
+    QT_TRANSLATE_NOOP("engraving", "%14"),
+    QT_TRANSLATE_NOOP("engraving", "%15"),
+    QT_TRANSLATE_NOOP("engraving", "%16"),
+    QT_TRANSLATE_NOOP("engraving", "%17"),
+    QT_TRANSLATE_NOOP("engraving", "%18"),
+    QT_TRANSLATE_NOOP("engraving", "%19"),
+};
+
+TranslatableString tpcPitchToTranslatableString(const int pitch, const int tpc)
+{
+    IF_ASSERT_FAILED(0 <= pitch && pitch <= 127) {
+        return TranslatableString();
+    }
+
+    const AccidentalVal accidental = tpc2alter(tpc);
+    const int octave = (pitch - static_cast<int>(accidental)) / PITCH_DELTA_OCTAVE - 1;
+    const auto octaveIdx = static_cast<std::size_t>(octave + 1);
+
+    return TranslatableString("engraving", OCTAVE_DESIGNATIONS[octaveIdx])
+           .arg(tpcToTranslatableString(tpc));
+}
+
 //---------------------------------------------------------
 //   tpc2name
 //    return note name
