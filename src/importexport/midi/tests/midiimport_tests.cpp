@@ -154,7 +154,7 @@ protected:
 
     String midiFilePath(const String fileName)
     {
-        return MIDI_IMPORT_DATA_DIR + u"/" + fileName + u".mid";
+        return engraving::ScoreRW::rootPath() + u"/" + MIDI_IMPORT_DATA_DIR + u"/" + fileName + u".mid";
     }
 };
 
@@ -175,7 +175,7 @@ std::unique_ptr<engraving::MasterScore> MidiImportTests::importMidi(const String
         return mu::iex::midi::importMidi(score, path.toQString());
     };
 
-    return std::unique_ptr<engraving::MasterScore> { engraving::ScoreRW::readScore(fileName, false, doImportMidi) };
+    return std::unique_ptr<engraving::MasterScore> { engraving::ScoreRW::readScore(fileName, true, doImportMidi) };
 }
 
 TEST_F(MidiImportTests, m1) {
@@ -188,14 +188,12 @@ TEST_F(MidiImportTests, m2) {
 }
 
 // voices, typeA, resolve with tie
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_m3) {
+TEST_F(MidiImportTests, m3) {
     dontSimplify("m3");
 }
 
 // voices, typeB, resolve with tie
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_m4) {
+TEST_F(MidiImportTests, m4) {
     dontSimplify("m4");
 }
 
@@ -205,8 +203,7 @@ TEST_F(MidiImportTests, m5) {
 }
 
 // quantization
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_quantDotted4th) {
+TEST_F(MidiImportTests, quantDotted4th) {
     String midiFile(u"quant_dotted_4th");
     auto& opers = midiImportOperations;
     opers.addNewMidiFile(midiFilePath(midiFile));
@@ -235,45 +232,38 @@ TEST_F(MidiImportTests, DISABLED_humanTempo) {
 
 // chord detection
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_chordSmallError) {
+TEST_F(MidiImportTests, chordSmallError) {
     noTempoText("chord_small_error");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_chordBigError) {
+TEST_F(MidiImportTests, chordBigError) {
     noTempoText("chord_big_error");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_chordLegato) {
+TEST_F(MidiImportTests, chordLegato) {
     noTempoText("chord_legato");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_chordCollect) {
+TEST_F(MidiImportTests, chordCollect) {
     noTempoText("chord_collect");
 }
 
 // very short note - don't remove note but show it with min allowed duration (1/128)
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_chordVeryShort) {
+TEST_F(MidiImportTests, chordVeryShort) {
     dontSimplify("chord_1_tick_long");
 }
 
 // test scores for meter (duration subdivision)
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_meterTimeSig4_4) {
+
+TEST_F(MidiImportTests, meterTimeSig4_4) {
     dontSimplify("meter_4-4");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_metertimeSig9_8) {
+TEST_F(MidiImportTests, metertimeSig9_8) {
     dontSimplify("meter_9-8");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_metertimeSig12_8) {
+TEST_F(MidiImportTests, metertimeSig12_8) {
     dontSimplify("meter_12-8");
 }
 
@@ -282,77 +272,64 @@ TEST_F(MidiImportTests, DISABLED_metertimeSig15_8) {
     dontSimplify("meter_15-8");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_meterCentralLongNote) {
+TEST_F(MidiImportTests, meterCentralLongNote) {
     dontSimplify("meter_central_long_note");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_meterCentralLongRest) {
+TEST_F(MidiImportTests, meterCentralLongRest) {
     dontSimplify("meter_central_long_rest");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_meterChordExample) {
+TEST_F(MidiImportTests, meterChordExample) {
     dontSimplify("meter_chord_example");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_meterDotsExample1) {
+TEST_F(MidiImportTests, meterDotsExample1) {
     dontSimplify("meter_dots_example1");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_meterDotsExample2) {
+TEST_F(MidiImportTests, meterDotsExample2) {
     dontSimplify("meter_dots_example2");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_meterDotsExample3) {
+TEST_F(MidiImportTests, meterDotsExample3) {
     dontSimplify("meter_dots_example3");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_meterHalfRest3_4) {
+TEST_F(MidiImportTests, meterHalfRest3_4) {
     dontSimplify("meter_half_rest_3-4");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_meterFirst2_8thRestsCompound) {
+TEST_F(MidiImportTests, meterFirst2_8thRestsCompound) {
     dontSimplify("meter_first_2_8th_rests_compound");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_meterLastQuarterRestCompound) {
+TEST_F(MidiImportTests, meterLastQuarterRestCompound) {
     dontSimplify("meter_last_quarter_rest_compound");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_meterRests) {
+TEST_F(MidiImportTests, meterRests) {
     dontSimplify("meter_rests");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_meterTwoBeatsOver) {
+TEST_F(MidiImportTests, meterTwoBeatsOver) {
     dontSimplify("meter_two_beats_over");
 }
 
 // TODO: update ref
-TEST_F(MidiImportTests, DISABLED_meterDotTie) {
+TEST_F(MidiImportTests, meterDotTie) {
     dontSimplify("meter_dot_tie");
 }
 
 // time sig
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_timesigChanges) {
+TEST_F(MidiImportTests, timesigChanges) {
     dontSimplify("timesig_changes");
 }
 
 // test scores for tuplets
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_tuplet2Voices3_5Tuplets) {
+TEST_F(MidiImportTests, tuplet2Voices3_5Tuplets) {
     // requires 1/32 quantization
     QString midiFile("tuplet_2_voices_3_5_tuplets");
     auto& opers = midiImportOperations;
@@ -523,18 +500,15 @@ TEST_F(MidiImportTests, DISABLED_tuplet7Staccato) {
     noTempoText("tuplet_7_staccato");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_minDuration) {
+TEST_F(MidiImportTests, minDuration) {
     dontSimplify("min_duration");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_pickupMeasure) {
+TEST_F(MidiImportTests, pickupMeasure) {
     dontSimplify("pickup");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_pickupMeasureLong) {
+TEST_F(MidiImportTests, pickupMeasureLong) {
     noTempoText("pickup_long");
 }
 
@@ -675,8 +649,7 @@ TEST_F(MidiImportTests, DISABLED_percShortNotes) {
 
 // clef changes along the score
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_clefTied) {
+TEST_F(MidiImportTests, clefTied) {
     dontSimplify("clef_tied");
 }
 
@@ -693,13 +666,11 @@ TEST_F(MidiImportTests, DISABLED_clefPrev) {
 
 // duration simplification
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_simplify16thStaccato) {
+TEST_F(MidiImportTests, simplify16thStaccato) {
     simplification("simplify_16th_staccato");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_simplify8thDont) {
+TEST_F(MidiImportTests, simplify8thDont) {
     simplification("simplify_8th_dont");
 }
 
@@ -708,8 +679,7 @@ TEST_F(MidiImportTests, DISABLED_simplify32ndStaccato) {
     simplification("simplify_32nd_staccato");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_simplify8thDottedNoStaccato) {
+TEST_F(MidiImportTests, simplify8thDottedNoStaccato) {
     simplification("simplify_8th_dotted_no_staccato");
 }
 
@@ -724,8 +694,7 @@ TEST_F(MidiImportTests, DISABLED_simplifyTripletStaccato) {
     simplification("simplify_triplet_staccato");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_simplifyDotted3_4) {
+TEST_F(MidiImportTests, simplifyDotted3_4) {
     simplification("simplify_dotted_3-4");
 }
 
@@ -741,8 +710,7 @@ TEST_F(MidiImportTests, DISABLED_voiceSeparationAcid) {
     voiceSeparation("voice_acid");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_voiceSeparationIntersect) {
+TEST_F(MidiImportTests, voiceSeparationIntersect) {
     voiceSeparation("voice_intersect");
 }
 
@@ -752,8 +720,7 @@ TEST_F(MidiImportTests, DISABLED_voiceSeparationTuplet) {
     voiceSeparation("voice_tuplet", true);
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_voiceSeparationCentral) {
+TEST_F(MidiImportTests, voiceSeparationCentral) {
     voiceSeparation("voice_central");
 }
 
@@ -766,13 +733,11 @@ TEST_F(MidiImportTests, DISABLED_division) {
 
 // MIDI instruments and Grand Staff
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_instrumentGrand) {
+TEST_F(MidiImportTests, instrumentGrand) {
     importThenCompareWithRef("instrument_grand");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_instrumentGrand2) {
+TEST_F(MidiImportTests, instrumentGrand2) {
     importThenCompareWithRef("instrument_grand2");
 }
 
@@ -781,8 +746,7 @@ TEST_F(MidiImportTests, DISABLED_instrumentChannels) {
     importThenCompareWithRef("instrument_channels");
 }
 
-// TODO: update ref
-TEST_F(MidiImportTests, DISABLED_instrument3StaffOrgan) {
+TEST_F(MidiImportTests, instrument3StaffOrgan) {
     importThenCompareWithRef("instrument_3staff_organ");
 }
 
@@ -1518,8 +1482,7 @@ static int findColByHeader(const TracksModel& model, const char* colHeader)
     return -1;
 }
 
-// FIXME
-TEST_F(MidiImportTests, DISABLED_testGuiTracksModel) {
+TEST_F(MidiImportTests, testGuiTracksModel) {
     QString midiFile("perc_drums");
     QString midiFileFullPath = midiFilePath(midiFile);
     auto& opers = midiImportOperations;
