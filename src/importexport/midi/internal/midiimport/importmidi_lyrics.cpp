@@ -30,7 +30,7 @@
 #include "engraving/dom/box.h"
 #include "engraving/dom/engravingitem.h"
 #include "engraving/dom/measurebase.h"
-#include "engraving/dom/masterscore.h"
+#include "engraving/dom/score.h"
 #include "engraving/dom/staff.h"
 #include "engraving/dom/text.h"
 
@@ -58,10 +58,9 @@ bool isLyricEvent(const MidiEvent& e)
     return e.type() == ME_META && (e.metaType() == META_TEXT || e.metaType() == META_LYRIC);
 }
 
-std::multimap<ReducedFraction, std::string>
-extractLyricsFromTrack(const MidiTrack& track, int division, bool isDivisionInTps)
+static LyricsTrack extractLyricsFromTrack(const MidiTrack& track, int division, bool isDivisionInTps)
 {
-    std::multimap<ReducedFraction, std::string> lyrics;
+    LyricsTrack lyrics = {};
 
     for (const auto& i: track.events()) {
         const auto& e = i.second;
@@ -242,14 +241,18 @@ void addLyricsToScore(
     }
 }
 
-void extractLyricsToMidiData(const MidiFile* mf)
+std::vector<LyricsTrack> extractLyricsToMidiData(const MidiFile& midiFile)
 {
-    for (const auto& t: mf->tracks()) {
-        const auto lyrics = extractLyricsFromTrack(t, mf->division(), mf->isDivisionInTps());
+    std::vector<LyricsTrack> lyricsTracks = {};
+
+    for (const MidiTrack& midiTrack : midiFile.tracks()) {
+        LyricsTrack lyrics = extractLyricsFromTrack(midiTrack, midiFile.division(), midiFile.isDivisionInTps());
         if (!lyrics.empty()) {
-            midiImportOperations.data()->lyricTracks.push_back(lyrics);
+            lyricsTracks.push_back(std::move(lyrics));
         }
     }
+
+    return lyricsTracks;
 }
 
 void setInitialLyricsFromMidiData(const QList<MTrack>& tracks)

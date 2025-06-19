@@ -457,14 +457,19 @@ void setIfHumanPerformance(
     TimeSigMap* sigmap)
 {
     auto allChordsTrack = getTrackWithAllChords(tracks);
-    MChord::collectChords(allChordsTrack, { 2, 1 }, { 1, 2 });
+
+    auto& opers = midiImportOperations.data()->trackOpers;
+
+    const ReducedFraction toleranceCoeff = opers.isHumanPerformance.value()
+                                           ? ReducedFraction { 2, 1 } : ReducedFraction { 1, 2 };
+    MChord::collectChords(allChordsTrack, toleranceCoeff);
+
     const MTrack& track = allChordsTrack.begin()->second;
     const auto& allChords = track.chords;
     if (allChords.empty()) {
         return;
     }
     const bool isHuman = isHumanPerformance(allChords, sigmap);
-    auto& opers = midiImportOperations.data()->trackOpers;
     if (opers.isHumanPerformance.canRedefineDefaultLater()) {
         opers.isHumanPerformance.setDefaultValue(isHuman);
     }

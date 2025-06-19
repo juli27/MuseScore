@@ -26,7 +26,6 @@
 #include "importmidi_operations.h"
 #include "../midishared/midifile.h"
 
-#include "engraving/dom/masterscore.h"
 #include "engraving/dom/staff.h"
 #include "engraving/dom/measure.h"
 #include "engraving/dom/harmony.h"
@@ -182,20 +181,22 @@ QString findChordName(
     return "";
 }
 
-void findChordNames(const std::multimap<int, MTrack>& tracks)
+std::multimap<ReducedFraction, QString> findChordNames(const MidiFile& midiFile)
 {
-    auto& data = *midiImportOperations.data();
+    std::multimap<ReducedFraction, QString> chordNames = {};
 
-    for (const auto& track: tracks) {
-        for (const auto& event: track.second.mtrack->events()) {
+    for (const auto& track: midiFile.tracks()) {
+        for (const auto& event: track.events()) {
             const MidiEvent& e = event.second;
             const QString chordName = readChordName(e);
             if (!chordName.isEmpty()) {
                 const auto time = ReducedFraction::fromTicks(event.first);
-                data.chordNames.insert({ time, chordName });
+                chordNames.insert({ time, chordName });
             }
         }
     }
+
+    return chordNames;
 }
 
 // all notes should be already placed to the score

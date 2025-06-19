@@ -20,6 +20,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
+#include <iterator>
 #include <set>
 
 #include <QFile>
@@ -232,6 +234,12 @@ void quantizeAllTracks(std::multimap<int, MTrack>& tracks,
                        const ReducedFraction& lastTick)
 {
     auto& opers = midiImportOperations;
+    auto& trackOpers = opers.data()->trackOpers;
+
+    // (4/3 of the smallest duration) tol is less sensitive
+    // to on time inaccuracies than 1/2 earlier
+    const ReducedFraction toleranceCoeff = trackOpers.isHumanPerformance.value()
+                                           ? ReducedFraction { 2, 1 } : ReducedFraction { 4, 3 };
 
     for (auto& track: tracks) {
         MTrack& mtrack = track.second;
@@ -268,9 +276,7 @@ void quantizeAllTracks(std::multimap<int, MTrack>& tracks,
                    "quantizeAllTracks",
                    "There are overlapping notes of the same voice that is incorrect");
 #endif
-        // (4/3 of the smallest duration) tol is less sensitive
-        // to on time inaccuracies than 1/2 earlier
-        MChord::collectChords(mtrack, { 2, 1 }, { 4, 3 });
+        MChord::collectChords(mtrack, toleranceCoeff);
         Quantize::quantizeChords(mtrack.chords, sigmap, basicQuant);
         MidiTuplet::removeEmptyTuplets(mtrack);
 #ifdef QT_DEBUG
@@ -1141,43 +1147,50 @@ QList<MTrack> convertMidi(Score* score, const MidiFile* mf)
 
     auto tracks = createMTrackList(sigmap, mf);
 
-    auto& opers = midiImportOperations;
-    if (opers.data()->processingsOfOpenedFile == 0) {         // for newly opened MIDI file
-        MidiChordName::findChordNames(tracks);
+    MidiOperations::FileData& data = *midiImportOperations.data();
+    // for newly opened MIDI file
+    if (data.processingsOfOpenedFile == 0) {
+        data.chordNames = MidiChordName::findChordNames(*mf);
     }
 
     lengthenTooShortNotes(tracks);
 
-    if (opers.data()->processingsOfOpenedFile == 0) {         // for newly opened MIDI file
-        opers.data()->trackCount = 0;
+    if (data.processingsOfOpenedFile == 0) {         // for newly opened MIDI file
+        data.trackCount = 0;
         for (const auto& track: tracks) {
             if (track.first != -1) {
-                ++opers.data()->trackCount;
+                ++data.trackCount;
             }
         }
-        MidiLyrics::extractLyricsToMidiData(mf);
+
+        std::vector<LyricsTrack> lyrics = MidiLyrics::extractLyricsToMidiData(*mf);
+        std::move(lyrics.begin(), lyrics.end(), std::back_inserter(data.lyricTracks));
     }
     // for newly opened MIDI file - detect if it is a human performance
     // if so - detect beats and set initial time signature
-    if (opers.data()->processingsOfOpenedFile == 0) {
+    if (data.processingsOfOpenedFile == 0) {
         Quantize::setIfHumanPerformance(tracks, sigmap);
     } else {      // user value
         MidiBeat::setTimeSignature(sigmap);
     }
 
-    Q_ASSERT_X((opers.data()->trackOpers.isHumanPerformance.value())
-               ? Meter::userTimeSigToFraction(opers.data()->trackOpers.timeSigNumerator.value(),
-                                              opers.data()->trackOpers.timeSigDenominator.value())
+    Q_ASSERT_X((data.trackOpers.isHumanPerformance.value())
+               ? Meter::userTimeSigToFraction(data.trackOpers.timeSigNumerator.value(),
+                                              data.trackOpers.timeSigDenominator.value())
                != ReducedFraction(0, 1) : true,
                "convertMidi", "Null time signature for human-performed MIDI file");
 
-    MChord::collectChords(tracks, { 2, 1 }, { 1, 2 });
+    const MidiOperations::Opers& trackOpers = data.trackOpers;
+
+    const ReducedFraction toleranceCoeff = trackOpers.isHumanPerformance.value()
+                                           ? ReducedFraction{ 2, 1 } : ReducedFraction { 1, 2 };
+    MChord::collectChords(tracks, toleranceCoeff);
     MidiBeat::adjustChordsToBeats(tracks);
     MChord::mergeChordsWithEqualOnTimeAndVoice(tracks);
 
     // for newly opened MIDI file
-    if (opers.data()->processingsOfOpenedFile == 0
-        && opers.data()->trackOpers.doStaffSplit.canRedefineDefaultLater()) {
+    if (data.processingsOfOpenedFile == 0
+        && data.trackOpers.doStaffSplit.canRedefineDefaultLater()) {
         setLeftRightHandSplit(tracks);
     }
 

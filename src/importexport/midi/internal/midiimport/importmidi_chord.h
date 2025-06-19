@@ -19,8 +19,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef IMPORTMIDI_CHORD_H
-#define IMPORTMIDI_CHORD_H
+#pragma once
 
 #include "importmidi_fraction.h"
 #include "importmidi_tuplet.h"
@@ -126,11 +125,8 @@ ReducedFraction findMinDuration(const ReducedFraction& onTime, const QList<MidiC
 void sortNotesByPitch(std::multimap<ReducedFraction, MidiChord>& chords);
 void sortNotesByLength(std::multimap<ReducedFraction, MidiChord>& chords);
 
-void collectChords(
-    std::multimap<int, MTrack>& tracks, const ReducedFraction& humanTolCoeff, const ReducedFraction& nonHumanTolCoeff);
-
-void collectChords(
-    MTrack& track, const ReducedFraction& humanTolCoeff, const ReducedFraction& nonHumanTolCoeff);
+void collectChords(std::multimap<int, MTrack>& tracks, const ReducedFraction& toleranceCoeff);
+void collectChords(MTrack& track, const ReducedFraction& toleranceCoeff);
 
 void removeOverlappingNotes(std::multimap<int, MTrack>& tracks);
 void mergeChordsWithEqualOnTimeAndVoice(std::multimap<int, MTrack>& tracks);
@@ -161,5 +157,3 @@ bool areBarIndexesSet(const std::multimap<ReducedFraction, MidiChord>& chords);
 #endif
 } // namespace MChord
 } // namespace mu::iex::midi
-
-#endif // IMPORTMIDI_CHORD_H
