@@ -47,7 +47,17 @@ public:
     ReducedFraction offTimeQuant = ReducedFraction(-1, 1);         // invalid by default
     // to assign lyrics
     ReducedFraction origOnTime;
+
+    static auto offTimeCompare()
+    {
+        return [](const MidiNote& n1, const MidiNote& n2) {
+            return n1.offTime < n2.offTime;
+        };
+    }
 };
+
+class MidiChord;
+using MidiChords = std::multimap<ReducedFraction, MidiChord>;
 
 class MidiChord
 {

@@ -26,7 +26,6 @@
 
 #include "engraving/dom/sig.h"
 #include "importmidi_fraction.h"
-#include "engraving/dom/mscore.h"
 #include "importmidi_chord.h"
 #include "importmidi_meter.h"
 #include "importmidi_tuplet.h"

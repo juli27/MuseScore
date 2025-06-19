@@ -20,14 +20,17 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "importmidi_chord.h"
+
+#include <algorithm>
+#include <iterator>
+#include <set>
+
 #include "importmidi_inner.h"
 #include "importmidi_chord.h"
 #include "importmidi_operations.h"
 #include "importmidi_quant.h"
 
 #include "engraving/dom/sig.h"
-
-#include <set>
 
 #include "log.h"
 
@@ -91,39 +94,33 @@ const ReducedFraction& minAllowedDuration()
 
 ReducedFraction minNoteOffTime(const QList<MidiNote>& notes)
 {
-    if (notes.isEmpty()) {
+    const auto minIt = std::min_element(notes.begin(), notes.end(), MidiNote::offTimeCompare());
+    if (minIt == notes.end()) {
         return { 0, 1 };
     }
-    auto it = notes.begin();
-    ReducedFraction minOffTime = it->offTime;
-    for (++it; it != notes.end(); ++it) {
-        if (it->offTime < minOffTime) {
-            minOffTime = it->offTime;
-        }
-    }
-    return minOffTime;
+
+    return minIt->offTime;
 }
 
 ReducedFraction maxNoteOffTime(const QList<MidiNote>& notes)
 {
-    ReducedFraction maxOffTime(0, 1);
-    for (const auto& note: notes) {
-        if (note.offTime > maxOffTime) {
-            maxOffTime = note.offTime;
-        }
+    const auto maxIt = std::max_element(notes.begin(), notes.end(), MidiNote::offTimeCompare());
+    if (maxIt == notes.end()) {
+        return { 0, 1 };
     }
-    return maxOffTime;
+
+    return maxIt->offTime;
 }
 
 ReducedFraction minNoteLen(const std::pair<const ReducedFraction, MidiChord>& chord)
 {
-    const auto minOffTime = minNoteOffTime(chord.second.notes);
+    const ReducedFraction minOffTime = minNoteOffTime(chord.second.notes);
     return minOffTime - chord.first;
 }
 
 ReducedFraction maxNoteLen(const std::pair<const ReducedFraction, MidiChord>& chord)
 {
-    const auto maxOffTime = maxNoteOffTime(chord.second.notes);
+    const ReducedFraction maxOffTime = maxNoteOffTime(chord.second.notes);
     return maxOffTime - chord.first;
 }
 
@@ -358,7 +355,7 @@ void collectChords(std::multimap<int, MTrack>& tracks, const ReducedFraction& to
 //
 void collectChords(MTrack& track, const ReducedFraction& toleranceCoeff)
 {
-    auto& chords = track.chords;
+    MidiChords& chords = track.chords;
     if (chords.empty()) {
         return;
     }
