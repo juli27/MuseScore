@@ -30,7 +30,7 @@
 #include "engraving/dom/box.h"
 #include "engraving/dom/engravingitem.h"
 #include "engraving/dom/measurebase.h"
-#include "engraving/dom/masterscore.h"
+#include "engraving/dom/score.h"
 #include "engraving/dom/staff.h"
 #include "engraving/dom/text.h"
 
@@ -58,10 +58,9 @@ bool isLyricEvent(const MidiEvent& e)
     return e.type() == ME_META && (e.metaType() == META_TEXT || e.metaType() == META_LYRIC);
 }
 
-std::multimap<ReducedFraction, std::string>
-extractLyricsFromTrack(const MidiTrack& track, int division, bool isDivisionInTps)
+static LyricsTrack extractLyricsFromTrack(const MidiTrack& track, int division, bool isDivisionInTps)
 {
-    std::multimap<ReducedFraction, std::string> lyrics;
+    LyricsTrack lyrics = {};
 
     for (const auto& i: track.events()) {
         const auto& e = i.second;
@@ -242,35 +241,38 @@ void addLyricsToScore(
     }
 }
 
-void extractLyricsToMidiData(const MidiFile* mf)
+std::vector<LyricsTrack> extractLyricsToMidiData(const MidiFile& midiFile)
 {
-    for (const auto& t: mf->tracks()) {
-        const auto lyrics = extractLyricsFromTrack(t, mf->division(), mf->isDivisionInTps());
+    std::vector<LyricsTrack> lyricsTracks = {};
+
+    for (const MidiTrack& midiTrack : midiFile.tracks()) {
+        LyricsTrack lyrics = extractLyricsFromTrack(midiTrack, midiFile.division(), midiFile.isDivisionInTps());
         if (!lyrics.empty()) {
-            midiImportOperations.data()->lyricTracks.push_back(lyrics);
+            lyricsTracks.push_back(std::move(lyrics));
         }
     }
+
+    return lyricsTracks;
 }
 
-void setInitialLyricsFromMidiData(const QList<MTrack>& tracks)
+std::vector<TrackMapping> setInitialLyricsFromMidiData(const QList<MTrack>& tracks,
+                                                       const QList<LyricsTrack>& lyricTracks)
 {
-    std::set<int> usedTracks;
-    auto& data = *midiImportOperations.data();
-    const auto& lyricTracks = data.lyricTracks;
-    if (lyricTracks.isEmpty()) {
-        return;
-    }
+    std::vector<TrackMapping> mappings = {};
+    std::set<int> usedTracks = {};
 
-    for (int i = 0; i != lyricTracks.size(); ++i) {
+    for (int i = 0; i < lyricTracks.size(); ++i) {
         const BestTrack bestTrack = findBestTrack(tracks, lyricTracks[i], usedTracks);
         if (bestTrack.index >= 0) {
             usedTracks.insert(bestTrack.index);
             addLyricsToScore(lyricTracks[i],
                              bestTrack.matchedLyricTimes,
                              tracks[bestTrack.index].staff);
-            data.trackOpers.lyricTrackIndex.setValue(bestTrack.index, i);
+            mappings.push_back(TrackMapping { bestTrack.index, i });
         }
     }
+
+    return mappings;
 }
 
 std::vector<std::pair<ReducedFraction, ReducedFraction> > findMatchedLyricTimes(
@@ -291,15 +293,15 @@ std::vector<std::pair<ReducedFraction, ReducedFraction> > findMatchedLyricTimes(
     return matchedLyricTimes;
 }
 
-void setLyricsFromOperations(const QList<MTrack>& tracks)
+void setLyricsFromOperations(const QList<MTrack>& tracks, const QList<LyricsTrack>& lyricTracks,
+                             const MidiOperations::TrackOp<int>& lyricsTrackIdx)
 {
-    const auto& lyricTracks = midiImportOperations.data()->lyricTracks;
     if (lyricTracks.isEmpty()) {
         return;
     }
+
     for (const auto& track: tracks) {
-        const auto& opers = midiImportOperations.data()->trackOpers;
-        const int lyricTrackIndex = opers.lyricTrackIndex.value(track.indexOfOperation);
+        const int lyricTrackIndex = lyricsTrackIdx.value(track.indexOfOperation);
         if (lyricTrackIndex >= 0 && lyricTrackIndex < lyricTracks.size()) {
             const auto& lyricTrack = lyricTracks[lyricTrackIndex];
             const auto matchedLyricTimes = findMatchedLyricTimes(track.chords, lyricTrack);
@@ -309,20 +311,9 @@ void setLyricsFromOperations(const QList<MTrack>& tracks)
     }
 }
 
-void setLyricsToScore(QList<MTrack>& tracks)
-{
-    const auto* data = midiImportOperations.data();
-    if (data->processingsOfOpenedFile == 0) {
-        setInitialLyricsFromMidiData(tracks);
-    } else {
-        setLyricsFromOperations(tracks);
-    }
-}
-
-QList<std::string> makeLyricsListForUI()
+QList<std::string> makeLyricsListForUI(const QList<LyricsTrack>& lyrics)
 {
     QList<std::string> list;
-    const auto& lyrics = midiImportOperations.data()->lyricTracks;
     if (lyrics.isEmpty()) {
         return list;
     }

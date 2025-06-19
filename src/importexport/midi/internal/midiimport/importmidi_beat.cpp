@@ -308,10 +308,8 @@ void setTimeSig(engraving::TimeSigMap* sigmap, const ReducedFraction& timeSig)
     sigmap->add(0, timeSig.fraction());
 }
 
-void findBeatLocations(
-    const std::multimap<ReducedFraction, MidiChord>& allChords,
-    engraving::TimeSigMap* sigmap,
-    double ticksPerSec)
+std::map<double, MidiOperations::HumanBeatData, std::greater<double> > findBeatLocations(
+    const std::multimap<ReducedFraction, MidiChord>& allChords, engraving::TimeSigMap* sigmap, double ticksPerSec)
 {
     const size_t MIN_BEAT_COUNT = 8;
     const auto barFractions = findTimeSignatures(ReducedFraction(sigmap->timesig(0).timesig()));
@@ -320,7 +318,6 @@ void findBeatLocations(
         >
     salienceFuncs = { findChordSalience1, findChordSalience2 };
 
-    // <match rank, beat data, comparator>
     std::map<double, MidiOperations::HumanBeatData, std::greater<double> > beatResults;
 
     for (const auto& func: salienceFuncs) {
@@ -352,23 +349,7 @@ void findBeatLocations(
         }
     }
 
-    auto* data = midiImportOperations.data();
-    if (!beatResults.empty()) {
-        const MidiOperations::HumanBeatData& beatData = beatResults.begin()->second;
-        setTimeSig(sigmap, beatData.timeSig);
-        data->humanBeatData = beatData;
-        data->trackOpers.measureCount2xLess.setDefaultValue(beatData.measureCount2xLess);
-        data->trackOpers.timeSigNumerator.setDefaultValue(
-            Meter::fractionNumeratorToUserValue(beatData.timeSig.numerator()));
-        data->trackOpers.timeSigDenominator.setDefaultValue(
-            Meter::fractionDenominatorToUserValue(beatData.timeSig.denominator()));
-    } else {
-        const auto currentTimeSig = ReducedFraction(sigmap->timesig(0).timesig());
-        data->trackOpers.timeSigNumerator.setDefaultValue(
-            Meter::fractionNumeratorToUserValue(currentTimeSig.numerator()));
-        data->trackOpers.timeSigDenominator.setDefaultValue(
-            Meter::fractionDenominatorToUserValue(currentTimeSig.denominator()));
-    }
+    return beatResults;
 }
 
 void scaleOffTimes(

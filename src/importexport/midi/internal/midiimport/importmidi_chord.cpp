@@ -22,10 +22,9 @@
 #include "importmidi_chord.h"
 #include "importmidi_inner.h"
 #include "importmidi_chord.h"
-#include "importmidi_clef.h"
 #include "importmidi_operations.h"
 #include "importmidi_quant.h"
-#include "engraving/dom/mscore.h"
+
 #include "engraving/dom/sig.h"
 
 #include <set>
@@ -326,13 +325,10 @@ bool hasNotesWithEqualPitch(const MidiChord& chord1, const MidiChord& chord2)
     return false;
 }
 
-void collectChords(
-    std::multimap<int, MTrack>& tracks,
-    const ReducedFraction& humanTolCoeff,
-    const ReducedFraction& nonHumanTolCoeff)
+void collectChords(std::multimap<int, MTrack>& tracks, const ReducedFraction& toleranceCoeff)
 {
-    for (auto& track: tracks) {
-        collectChords(track.second, humanTolCoeff, nonHumanTolCoeff);
+    for (auto& [index, track] : tracks) {
+        collectChords(track, toleranceCoeff);
     }
 }
 
@@ -360,10 +356,7 @@ void collectChords(
 // ------x-------------------------------|----------------|---------------------|------
 //       |<-----------------thresh time------------------>|<--thresh ext time-->|
 //
-void collectChords(
-    MTrack& track,
-    const ReducedFraction& humanTolCoeff,
-    const ReducedFraction& nonHumanTolCoeff)
+void collectChords(MTrack& track, const ReducedFraction& toleranceCoeff)
 {
     auto& chords = track.chords;
     if (chords.empty()) {
@@ -374,14 +367,11 @@ void collectChords(
                "MChord::collectChords", "There are too short notes");
 #endif
 
-    const auto& opers = midiImportOperations.data()->trackOpers;
-    const auto minAllowedDur = minAllowedDuration();
+    const ReducedFraction minAllowedDur = minAllowedDuration();
 
-    const auto threshTime = (opers.isHumanPerformance.value())
-                            ? minAllowedDur * humanTolCoeff
-                            : minAllowedDur * nonHumanTolCoeff;
-    const auto fudgeTime = threshTime / 4;
-    const auto threshExtTime = threshTime / 2;
+    const ReducedFraction threshTime = minAllowedDur * toleranceCoeff;
+    const ReducedFraction fudgeTime = threshTime / 4;
+    const ReducedFraction threshExtTime = threshTime / 2;
 
     ReducedFraction currentChordStart;
     ReducedFraction curThreshTime;

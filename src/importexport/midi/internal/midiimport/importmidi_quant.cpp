@@ -438,49 +438,6 @@ bool isHumanPerformance(
     return matched < TOL;
 }
 
-std::multimap<int, MTrack>
-getTrackWithAllChords(const std::multimap<int, MTrack>& tracks)
-{
-    std::multimap<int, MTrack> singleTrack{ { 0, MTrack() } };
-    auto& allChords = singleTrack.begin()->second.chords;
-    for (const auto& track: tracks) {
-        const MTrack& t = track.second;
-        for (const auto& chord: t.chords) {
-            allChords.insert(chord);
-        }
-    }
-    return singleTrack;
-}
-
-void setIfHumanPerformance(
-    const std::multimap<int, MTrack>& tracks,
-    TimeSigMap* sigmap)
-{
-    auto allChordsTrack = getTrackWithAllChords(tracks);
-    MChord::collectChords(allChordsTrack, { 2, 1 }, { 1, 2 });
-    const MTrack& track = allChordsTrack.begin()->second;
-    const auto& allChords = track.chords;
-    if (allChords.empty()) {
-        return;
-    }
-    const bool isHuman = isHumanPerformance(allChords, sigmap);
-    auto& opers = midiImportOperations.data()->trackOpers;
-    if (opers.isHumanPerformance.canRedefineDefaultLater()) {
-        opers.isHumanPerformance.setDefaultValue(isHuman);
-    }
-
-    if (isHuman) {
-        if (opers.quantValue.canRedefineDefaultLater()) {
-            opers.quantValue.setDefaultValue(MidiOperations::QuantValue::Q_8);
-        }
-        if (opers.maxVoiceCount.canRedefineDefaultLater()) {
-            opers.maxVoiceCount.setDefaultValue(MidiOperations::VoiceCount::V_2);
-        }
-        const double ticksPerSec = MidiTempo::findBasicTempo(tracks, true) * Constants::DIVISION;
-        MidiBeat::findBeatLocations(allChords, sigmap, ticksPerSec);          // and set time sig
-    }
-}
-
 //--------------------------------------------------------------------------------------------
 
 // remove small intersection with the next chord

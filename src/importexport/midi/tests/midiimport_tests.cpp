@@ -1424,7 +1424,7 @@ TEST_F(MidiImportTests, testGuiTracksModel) {
 
     TracksModel model;
     model.reset(opers.data()->trackOpers,
-                MidiLyrics::makeLyricsListForUI(),
+                MidiLyrics::makeLyricsListForUI(opers.data()->lyricTracks),
                 opers.data()->trackCount,
                 midiFileFullPath,
                 !opers.data()->humanBeatData.beatSet.empty(),

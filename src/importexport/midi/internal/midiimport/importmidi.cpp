@@ -20,6 +20,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
+#include <iterator>
 #include <set>
 
 #include <QFile>
@@ -232,6 +234,12 @@ void quantizeAllTracks(std::multimap<int, MTrack>& tracks,
                        const ReducedFraction& lastTick)
 {
     auto& opers = midiImportOperations;
+    auto& trackOpers = opers.data()->trackOpers;
+
+    // (4/3 of the smallest duration) tol is less sensitive
+    // to on time inaccuracies than 1/2 earlier
+    const ReducedFraction toleranceCoeff = trackOpers.isHumanPerformance.value()
+                                           ? ReducedFraction { 2, 1 } : ReducedFraction { 4, 3 };
 
     for (auto& track: tracks) {
         MTrack& mtrack = track.second;
@@ -268,9 +276,7 @@ void quantizeAllTracks(std::multimap<int, MTrack>& tracks,
                    "quantizeAllTracks",
                    "There are overlapping notes of the same voice that is incorrect");
 #endif
-        // (4/3 of the smallest duration) tol is less sensitive
-        // to on time inaccuracies than 1/2 earlier
-        MChord::collectChords(mtrack, { 2, 1 }, { 4, 3 });
+        MChord::collectChords(mtrack, toleranceCoeff);
         Quantize::quantizeChords(mtrack.chords, sigmap, basicQuant);
         MidiTuplet::removeEmptyTuplets(mtrack);
 #ifdef QT_DEBUG
@@ -781,6 +787,73 @@ std::multimap<int, MTrack> createMTrackList(TimeSigMap* sigmap, const MidiFile* 
     return tracks;
 }
 
+static std::multimap<int, MTrack> getTrackWithAllChords(const std::multimap<int, MTrack>& tracks)
+{
+    std::multimap<int, MTrack> singleTrack{ { 0, MTrack() } };
+    auto& allChords = singleTrack.begin()->second.chords;
+    for (const auto& track: tracks) {
+        const MTrack& t = track.second;
+        for (const auto& chord: t.chords) {
+            allChords.insert(chord);
+        }
+    }
+    return singleTrack;
+}
+
+static void setIfHumanPerformance(const std::multimap<int, MTrack>& tracks, TimeSigMap* sigmap)
+{
+    auto allChordsTrack = getTrackWithAllChords(tracks);
+
+    auto& data = *midiImportOperations.data();
+    auto& opers = data.trackOpers;
+
+    const ReducedFraction toleranceCoeff = opers.isHumanPerformance.value()
+                                           ? ReducedFraction { 2, 1 } : ReducedFraction { 1, 2 };
+    MChord::collectChords(allChordsTrack, toleranceCoeff);
+
+    const MTrack& track = allChordsTrack.begin()->second;
+    const auto& allChords = track.chords;
+    if (allChords.empty()) {
+        return;
+    }
+    const bool isHuman = Quantize::isHumanPerformance(allChords, sigmap);
+    if (opers.isHumanPerformance.canRedefineDefaultLater()) {
+        opers.isHumanPerformance.setDefaultValue(isHuman);
+    }
+
+    if (!isHuman) {
+        return;
+    }
+
+    if (opers.quantValue.canRedefineDefaultLater()) {
+        opers.quantValue.setDefaultValue(MidiOperations::QuantValue::Q_8);
+    }
+    if (opers.maxVoiceCount.canRedefineDefaultLater()) {
+        opers.maxVoiceCount.setDefaultValue(MidiOperations::VoiceCount::V_2);
+    }
+
+    // find beat locations and and set time sig
+
+    const double ticksPerSec = MidiTempo::findBasicTempo(tracks, true) * Constants::DIVISION;
+    // <match rank, beat data, comparator>
+    std::map<double, MidiOperations::HumanBeatData, std::greater<double> > beatResults
+        = MidiBeat::findBeatLocations(allChords, sigmap, ticksPerSec);
+
+    if (!beatResults.empty()) {
+        const MidiOperations::HumanBeatData& beatData = beatResults.begin()->second;
+        sigmap->clear();
+        sigmap->add(0, beatData.timeSig.fraction());
+        data.humanBeatData = beatData;
+        opers.measureCount2xLess.setDefaultValue(beatData.measureCount2xLess);
+        opers.timeSigNumerator.setDefaultValue(Meter::fractionNumeratorToUserValue(beatData.timeSig.numerator()));
+        opers.timeSigDenominator.setDefaultValue(Meter::fractionDenominatorToUserValue(beatData.timeSig.denominator()));
+    } else {
+        const auto currentTimeSig = ReducedFraction(sigmap->timesig(0).timesig());
+        opers.timeSigNumerator.setDefaultValue(Meter::fractionNumeratorToUserValue(currentTimeSig.numerator()));
+        opers.timeSigDenominator.setDefaultValue(Meter::fractionDenominatorToUserValue(currentTimeSig.denominator()));
+    }
+}
+
 Measure* barFromIndex(const Score* score, int barIndex)
 {
     const int tick = score->sigmap()->bar2tick(barIndex, 0);
@@ -1135,49 +1208,73 @@ ReducedFraction findLastChordTick(const std::multimap<int, MTrack>& tracks)
     return lastTick;
 }
 
+void setLyricsToScore(QList<MTrack>& tracks)
+{
+    MidiOperations::FileData& data = *midiImportOperations.data();
+    if (data.processingsOfOpenedFile != 0) {
+        MidiLyrics::setLyricsFromOperations(tracks, data.lyricTracks, data.trackOpers.lyricTrackIndex);
+
+        return;
+    }
+
+    const std::vector<MidiLyrics::TrackMapping> mappings
+        = MidiLyrics::setInitialLyricsFromMidiData(tracks, data.lyricTracks);
+
+    for (const auto& [trackIdx, lyricsIdx] : mappings) {
+        data.trackOpers.lyricTrackIndex.setValue(trackIdx, lyricsIdx);
+    }
+}
+
 QList<MTrack> convertMidi(Score* score, const MidiFile* mf)
 {
     auto* sigmap = score->sigmap();
 
     auto tracks = createMTrackList(sigmap, mf);
 
-    auto& opers = midiImportOperations;
-    if (opers.data()->processingsOfOpenedFile == 0) {         // for newly opened MIDI file
-        MidiChordName::findChordNames(tracks);
+    MidiOperations::FileData& data = *midiImportOperations.data();
+    // for newly opened MIDI file
+    if (data.processingsOfOpenedFile == 0) {
+        data.chordNames = MidiChordName::findChordNames(*mf);
     }
 
     lengthenTooShortNotes(tracks);
 
-    if (opers.data()->processingsOfOpenedFile == 0) {         // for newly opened MIDI file
-        opers.data()->trackCount = 0;
+    if (data.processingsOfOpenedFile == 0) {         // for newly opened MIDI file
+        data.trackCount = 0;
         for (const auto& track: tracks) {
             if (track.first != -1) {
-                ++opers.data()->trackCount;
+                ++data.trackCount;
             }
         }
-        MidiLyrics::extractLyricsToMidiData(mf);
+
+        std::vector<LyricsTrack> lyrics = MidiLyrics::extractLyricsToMidiData(*mf);
+        std::move(lyrics.begin(), lyrics.end(), std::back_inserter(data.lyricTracks));
     }
     // for newly opened MIDI file - detect if it is a human performance
     // if so - detect beats and set initial time signature
-    if (opers.data()->processingsOfOpenedFile == 0) {
-        Quantize::setIfHumanPerformance(tracks, sigmap);
+    if (data.processingsOfOpenedFile == 0) {
+        setIfHumanPerformance(tracks, sigmap);
     } else {      // user value
         MidiBeat::setTimeSignature(sigmap);
     }
 
-    Q_ASSERT_X((opers.data()->trackOpers.isHumanPerformance.value())
-               ? Meter::userTimeSigToFraction(opers.data()->trackOpers.timeSigNumerator.value(),
-                                              opers.data()->trackOpers.timeSigDenominator.value())
+    Q_ASSERT_X((data.trackOpers.isHumanPerformance.value())
+               ? Meter::userTimeSigToFraction(data.trackOpers.timeSigNumerator.value(),
+                                              data.trackOpers.timeSigDenominator.value())
                != ReducedFraction(0, 1) : true,
                "convertMidi", "Null time signature for human-performed MIDI file");
 
-    MChord::collectChords(tracks, { 2, 1 }, { 1, 2 });
+    const MidiOperations::Opers& trackOpers = data.trackOpers;
+
+    const ReducedFraction toleranceCoeff = trackOpers.isHumanPerformance.value()
+                                           ? ReducedFraction{ 2, 1 } : ReducedFraction { 1, 2 };
+    MChord::collectChords(tracks, toleranceCoeff);
     MidiBeat::adjustChordsToBeats(tracks);
     MChord::mergeChordsWithEqualOnTimeAndVoice(tracks);
 
     // for newly opened MIDI file
-    if (opers.data()->processingsOfOpenedFile == 0
-        && opers.data()->trackOpers.doStaffSplit.canRedefineDefaultLater()) {
+    if (data.processingsOfOpenedFile == 0
+        && data.trackOpers.doStaffSplit.canRedefineDefaultLater()) {
         setLeftRightHandSplit(tracks);
     }
 
@@ -1226,9 +1323,12 @@ QList<MTrack> convertMidi(Score* score, const MidiFile* mf)
     createTimeSignatures(score);
     score->connectTies();
 
-    MidiLyrics::setLyricsToScore(trackList);
+    setLyricsToScore(trackList);
     MidiTempo::setTempo(tracks, score);
-    MidiChordName::setChordNames(trackList);
+
+    if (data.trackOpers.showChordNames.value()) {
+        MidiChordName::setChordNames(data.chordNames, trackList);
+    }
 
     return trackList;
 }
