@@ -25,6 +25,8 @@
 #include <set>
 #include <map>
 
+#include "importmidi_operations.h"
+
 namespace mu::engraving {
 class TimeSigMap;
 }
@@ -36,7 +38,10 @@ class MTrack;
 
 namespace MidiBeat {
 void removeEvery2ndBeat(std::set<ReducedFraction>& beatSet);
-void findBeatLocations(
+
+// <match rank, beat data, comparator>
+std::map<double, MidiOperations::HumanBeatData, std::greater<double>>
+findBeatLocations(
     const std::multimap<ReducedFraction, MidiChord>& allChords, engraving::TimeSigMap* sigmap, double ticksPerSec);
 
 void adjustChordsToBeats(std::multimap<int, MTrack>& tracks);

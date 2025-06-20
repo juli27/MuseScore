@@ -85,8 +85,7 @@ ReducedFraction findOffTimeTupletQuantError(
 ReducedFraction findOffTimeQuantError(
     const std::pair<const ReducedFraction, MidiChord>& chord, const ReducedFraction& offTime, const ReducedFraction& basicQuant);
 
-void setIfHumanPerformance(
-    const std::multimap<int, MTrack>& tracks, engraving::TimeSigMap* sigmap);
+bool isHumanPerformance(const std::multimap<ReducedFraction, MidiChord>& chords, const engraving::TimeSigMap* sigmap);
 
 ReducedFraction quantizeValue(
     const ReducedFraction& value, const ReducedFraction& quant);

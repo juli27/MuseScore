@@ -787,6 +787,73 @@ std::multimap<int, MTrack> createMTrackList(TimeSigMap* sigmap, const MidiFile* 
     return tracks;
 }
 
+static std::multimap<int, MTrack> getTrackWithAllChords(const std::multimap<int, MTrack>& tracks)
+{
+    std::multimap<int, MTrack> singleTrack{ { 0, MTrack() } };
+    auto& allChords = singleTrack.begin()->second.chords;
+    for (const auto& track: tracks) {
+        const MTrack& t = track.second;
+        for (const auto& chord: t.chords) {
+            allChords.insert(chord);
+        }
+    }
+    return singleTrack;
+}
+
+static void setIfHumanPerformance(const std::multimap<int, MTrack>& tracks, TimeSigMap* sigmap)
+{
+    auto allChordsTrack = getTrackWithAllChords(tracks);
+
+    auto& data = *midiImportOperations.data();
+    auto& opers = data.trackOpers;
+
+    const ReducedFraction toleranceCoeff = opers.isHumanPerformance.value()
+                                           ? ReducedFraction { 2, 1 } : ReducedFraction { 1, 2 };
+    MChord::collectChords(allChordsTrack, toleranceCoeff);
+
+    const MTrack& track = allChordsTrack.begin()->second;
+    const auto& allChords = track.chords;
+    if (allChords.empty()) {
+        return;
+    }
+    const bool isHuman = Quantize::isHumanPerformance(allChords, sigmap);
+    if (opers.isHumanPerformance.canRedefineDefaultLater()) {
+        opers.isHumanPerformance.setDefaultValue(isHuman);
+    }
+
+    if (!isHuman) {
+        return;
+    }
+
+    if (opers.quantValue.canRedefineDefaultLater()) {
+        opers.quantValue.setDefaultValue(MidiOperations::QuantValue::Q_8);
+    }
+    if (opers.maxVoiceCount.canRedefineDefaultLater()) {
+        opers.maxVoiceCount.setDefaultValue(MidiOperations::VoiceCount::V_2);
+    }
+
+    // find beat locations and and set time sig
+
+    const double ticksPerSec = MidiTempo::findBasicTempo(tracks, true) * Constants::DIVISION;
+    // <match rank, beat data, comparator>
+    std::map<double, MidiOperations::HumanBeatData, std::greater<double> > beatResults
+        = MidiBeat::findBeatLocations(allChords, sigmap, ticksPerSec);
+
+    if (!beatResults.empty()) {
+        const MidiOperations::HumanBeatData& beatData = beatResults.begin()->second;
+        sigmap->clear();
+        sigmap->add(0, beatData.timeSig.fraction());
+        data.humanBeatData = beatData;
+        opers.measureCount2xLess.setDefaultValue(beatData.measureCount2xLess);
+        opers.timeSigNumerator.setDefaultValue(Meter::fractionNumeratorToUserValue(beatData.timeSig.numerator()));
+        opers.timeSigDenominator.setDefaultValue(Meter::fractionDenominatorToUserValue(beatData.timeSig.denominator()));
+    } else {
+        const auto currentTimeSig = ReducedFraction(sigmap->timesig(0).timesig());
+        opers.timeSigNumerator.setDefaultValue(Meter::fractionNumeratorToUserValue(currentTimeSig.numerator()));
+        opers.timeSigDenominator.setDefaultValue(Meter::fractionDenominatorToUserValue(currentTimeSig.denominator()));
+    }
+}
+
 Measure* barFromIndex(const Score* score, int barIndex)
 {
     const int tick = score->sigmap()->bar2tick(barIndex, 0);
@@ -1169,7 +1236,7 @@ QList<MTrack> convertMidi(Score* score, const MidiFile* mf)
     // for newly opened MIDI file - detect if it is a human performance
     // if so - detect beats and set initial time signature
     if (data.processingsOfOpenedFile == 0) {
-        Quantize::setIfHumanPerformance(tracks, sigmap);
+        setIfHumanPerformance(tracks, sigmap);
     } else {      // user value
         MidiBeat::setTimeSignature(sigmap);
     }
