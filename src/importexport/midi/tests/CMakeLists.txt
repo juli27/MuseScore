@@ -30,7 +30,7 @@ set(MODULE_TEST_SRC
     #${CMAKE_CURRENT_LIST_DIR}/testbase.cpp
     #${CMAKE_CURRENT_LIST_DIR}/testbase.h
     ${CMAKE_CURRENT_LIST_DIR}/midiimport_tests.cpp
-    #${CMAKE_CURRENT_LIST_DIR}/midiexport_tests.cpp doesn't compile and needs actualization
+    ${CMAKE_CURRENT_LIST_DIR}/midiexport_tests.cpp
 )
 
 set(MODULE_TEST_LINK
