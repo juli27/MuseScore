@@ -1208,6 +1208,23 @@ ReducedFraction findLastChordTick(const std::multimap<int, MTrack>& tracks)
     return lastTick;
 }
 
+void setLyricsToScore(QList<MTrack>& tracks)
+{
+    MidiOperations::FileData& data = *midiImportOperations.data();
+    if (data.processingsOfOpenedFile != 0) {
+        MidiLyrics::setLyricsFromOperations(tracks, data.lyricTracks, data.trackOpers.lyricTrackIndex);
+
+        return;
+    }
+
+    const std::vector<MidiLyrics::TrackMapping> mappings
+        = MidiLyrics::setInitialLyricsFromMidiData(tracks, data.lyricTracks);
+
+    for (const auto& [trackIdx, lyricsIdx] : mappings) {
+        data.trackOpers.lyricTrackIndex.setValue(trackIdx, lyricsIdx);
+    }
+}
+
 QList<MTrack> convertMidi(Score* score, const MidiFile* mf)
 {
     auto* sigmap = score->sigmap();
@@ -1306,9 +1323,12 @@ QList<MTrack> convertMidi(Score* score, const MidiFile* mf)
     createTimeSignatures(score);
     score->connectTies();
 
-    MidiLyrics::setLyricsToScore(trackList);
+    setLyricsToScore(trackList);
     MidiTempo::setTempo(tracks, score);
-    MidiChordName::setChordNames(trackList);
+
+    if (data.trackOpers.showChordNames.value()) {
+        MidiChordName::setChordNames(data.chordNames, trackList);
+    }
 
     return trackList;
 }

@@ -201,10 +201,9 @@ std::multimap<ReducedFraction, QString> findChordNames(const MidiFile& midiFile)
 
 // all notes should be already placed to the score
 
-void setChordNames(QList<MTrack>& tracks)
+void setChordNames(const std::multimap<ReducedFraction, QString>& chordNames, QList<MTrack>& tracks)
 {
-    const auto& data = *midiImportOperations.data();
-    if (data.chordNames.empty() || !data.trackOpers.showChordNames.value()) {
+    if (chordNames.empty()) {
         return;
     }
 
@@ -220,7 +219,7 @@ void setChordNames(QList<MTrack>& tracks)
             }
 
             const MidiChord& c = chord.second;
-            const QString chordName = findChordName(c.notes, data.chordNames);
+            const QString chordName = findChordName(c.notes, chordNames);
 
             if (chordName.isEmpty()) {
                 continue;

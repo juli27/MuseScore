@@ -35,6 +35,6 @@ class MTrack;
 
 namespace MidiChordName {
 std::multimap<ReducedFraction, QString> findChordNames(const MidiFile& tracks);
-void setChordNames(QList<MTrack>& tracks);
+void setChordNames(const std::multimap<ReducedFraction, QString>& chordNames, QList<MTrack>& tracks);
 } // namespace MidiChordName
 } // namespace mu::iex::midi

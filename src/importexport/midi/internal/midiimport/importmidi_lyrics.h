@@ -28,6 +28,7 @@
 #include <QList>
 
 #include "importmidi_fraction.h"
+#include "importmidi_operations.h"
 
 namespace mu::iex::midi {
 class MidiFile;
@@ -35,8 +36,18 @@ class MTrack;
 using LyricsTrack = std::multimap<ReducedFraction, std::string>;
 
 namespace MidiLyrics {
+struct TrackMapping {
+    int trackIdx;
+    int lyricsTrackIdx;
+};
+
 std::vector<LyricsTrack> extractLyricsToMidiData(const MidiFile& mf);
-void setLyricsToScore(QList<MTrack>& tracks);
-QList<std::string> makeLyricsListForUI();
+
+std::vector<TrackMapping> setInitialLyricsFromMidiData(const QList<MTrack>&, const QList<LyricsTrack>&);
+
+void setLyricsFromOperations(
+    const QList<MTrack>&, const QList<LyricsTrack>&, const MidiOperations::TrackOp<int>& lyricsTrackIdx);
+
+QList<std::string> makeLyricsListForUI(const QList<LyricsTrack>&);
 } // namespace MidiLyrics
 } // namespace mu::iex::midi
