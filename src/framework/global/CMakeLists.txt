@@ -32,6 +32,7 @@ set(MODULE_SRC
     ${ASYNC_SRC}
     ${KORS_LOGGER_SRC}
     ${KORS_PROFILER_SRC}
+    ${CMAKE_CURRENT_LIST_DIR}/thirdparty/expected/expected.hpp
     ${CMAKE_CURRENT_LIST_DIR}/globaltypes.h
     ${CMAKE_CURRENT_LIST_DIR}/iapplication.h
     ${CMAKE_CURRENT_LIST_DIR}/iinteractive.h
@@ -80,6 +81,7 @@ set(MODULE_SRC
 
     ${CMAKE_CURRENT_LIST_DIR}/types/bytearray.cpp
     ${CMAKE_CURRENT_LIST_DIR}/types/bytearray.h
+    ${CMAKE_CURRENT_LIST_DIR}/types/expected.h
     ${CMAKE_CURRENT_LIST_DIR}/types/string.cpp
     ${CMAKE_CURRENT_LIST_DIR}/types/string.h
     ${CMAKE_CURRENT_LIST_DIR}/types/datetime.cpp
