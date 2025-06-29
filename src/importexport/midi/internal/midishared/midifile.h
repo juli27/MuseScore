@@ -21,24 +21,30 @@
  */
 #pragma once
 
+#include <cstdint>
+#include <map>
+#include <optional>
 #include <vector>
+
 #include <QIODevice>
 
-#include "../midishared/midievent.h"
+#include "global/io/iodevice.h"
+#include "global/types/expected.h"
+#include "global/types/string.h"
+
+#include "midievent.h"
 
 namespace mu::iex::midi {
 class MidiTrack
 {
     std::multimap<int, MidiEvent> _events;
-    int _outChannel;
-    int _outPort;
-    bool _drumTrack;
+    int _outChannel = -1;
+    int _outPort = -1;
+    bool _drumTrack = false;
 
 public:
-    MidiTrack();
-    ~MidiTrack();
+    MidiTrack() = default;
 
-    bool empty() const;
     const std::multimap<int, MidiEvent>& events() const { return _events; }
     std::multimap<int, MidiEvent>& events() { return _events; }
 
@@ -53,24 +59,37 @@ public:
     void mergeNoteOnOff();
 };
 
-//---------------------------------------------------------
-//   MidiFile
-//---------------------------------------------------------
+enum class MidiFileFormat : std::uint16_t {
+    SingleTrack = 0,
+    SimultaneousMultiTrack = 1,
+    IndependentMultiTrack = 2,
+};
+
+constexpr std::optional<MidiFileFormat> toFileFormat(const std::uint16_t format)
+{
+    if (format > 2) {
+        return std::nullopt;
+    }
+
+    return MidiFileFormat{ format };
+}
+
+constexpr std::uint16_t toMidiData(const MidiFileFormat format)
+{
+    return static_cast<std::uint16_t>(format);
+}
 
 class MidiFile
 {
-    QIODevice* fp;
+    QIODevice* fp = nullptr;
     std::vector<MidiTrack> _tracks;
-    int _division;
-    bool _isDivisionInTps;         ///< ticks per second, alternative - ticks per beat
-    int _format;                 ///< midi file format (0-2)
-    bool _noRunningStatus;       ///< do not use running status on output
+    int _division = 0;
+    bool _isDivisionInTps = false; ///< ticks per second, alternative - ticks per beat
+    MidiFileFormat _format = MidiFileFormat::SimultaneousMultiTrack;
+    bool _noRunningStatus = false;       ///< do not use running status on output
 
-    // values used during read()
-    int status;                  ///< running status
-    int sstatus;                 ///< running status (not reset after meta or sysex events)
-    int click;                   ///< current tick position in file
-    qint64 curPos;               ///< current file byte position
+    // values used during write()
+    int status = 0;    ///< running status
 
     void writeEvent(const MidiEvent& event);
 
@@ -84,26 +103,34 @@ protected:
     void put(unsigned char c) { write(&c, 1); }
     void writeStatus(int type, int channel);
 
-    // read
-    void read(void*, qint64);
-    int getvl();
-    int readShort();
-    int readLong();
-    bool readEvent(MidiEvent*);
-    bool readTrack();
-
     void resetRunningStatus() { status = -1; }
 
 public:
-    MidiFile();
-    bool read(QIODevice*);
+    enum class ReadErrCode : std::uint8_t {
+        IoError,
+        MalformedFile,
+    };
+
+    struct ReadError {
+        ReadErrCode code;
+        std::size_t devicePos;
+        muse::String message;
+    };
+
+    using ReadResult = muse::Expected<MidiFile, ReadError>;
+
+    static ReadResult read(muse::io::IODevice&);
+
+    MidiFile() = default;
+    MidiFile(std::vector<MidiTrack>, int division, bool isDivisionInTps);
+
     bool write(QIODevice*);
 
     std::vector<MidiTrack>& tracks() { return _tracks; }
     const std::vector<MidiTrack>& tracks() const { return _tracks; }
 
-    int format() const { return _format; }
-    void setFormat(int fmt) { _format = fmt; }
+    MidiFileFormat format() const { return _format; }
+    void setFormat(MidiFileFormat fmt) { _format = fmt; }
 
     int division() const { return _division; }
     bool isDivisionInTps() const { return _isDivisionInTps; }
