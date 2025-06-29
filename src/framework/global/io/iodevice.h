@@ -52,6 +52,7 @@ public:
     size_t size() const;
     size_t pos() const;
 
+    size_t skip(size_t maxSize);
     bool seek(size_t pos);
 
     size_t read(uint8_t* data, size_t len);

@@ -160,3 +160,28 @@ TEST_F(Global_IO_IODeviceTests, Open_Append)
 
     EXPECT_EQ(ba, aba);
 }
+
+TEST_F(Global_IO_IODeviceTests, testSkip)
+{
+    std::string ref = "Hello";
+    ByteArray ba(reinterpret_cast<const uint8_t*>(ref.c_str()), ref.size());
+    Buffer buf(&ba);
+
+    ASSERT_TRUE(buf.open(IODevice::ReadWrite));
+
+    EXPECT_EQ(buf.skip(0), 0);
+    EXPECT_EQ(buf.pos(), 0);
+
+    EXPECT_EQ(buf.skip(2), 2);
+    EXPECT_EQ(buf.pos(), 2);
+
+    ASSERT_TRUE(buf.seek(0));
+
+    EXPECT_EQ(buf.skip(buf.size()), buf.size());
+    EXPECT_EQ(buf.pos(), buf.size());
+
+    ASSERT_TRUE(buf.seek(0));
+
+    EXPECT_EQ(buf.skip(buf.size() + 1), buf.size());
+    EXPECT_EQ(buf.pos(), buf.size());
+}
