@@ -102,6 +102,20 @@ size_t IODevice::pos() const
     return m_pos;
 }
 
+size_t IODevice::skip(const size_t maxSize)
+{
+    if (m_pos + maxSize <= size()) {
+        m_pos += maxSize;
+
+        return maxSize;
+    }
+
+    const size_t oldPos = m_pos;
+    m_pos = size();
+
+    return size() - oldPos;
+}
+
 bool IODevice::seek(size_t pos)
 {
     IF_ASSERT_FAILED(isOpen()) {
