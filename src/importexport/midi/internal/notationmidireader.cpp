@@ -21,18 +21,24 @@
  */
 #include "notationmidireader.h"
 
+#include "global/log.h"
+#include "global/io/path.h"
+
 #include "engraving/dom/score.h"
 #include "engraving/engravingerrors.h"
 
+using namespace muse;
 using namespace mu::iex::midi;
 using namespace mu::engraving;
 
 namespace mu::iex::midi {
-extern Err importMidi(MasterScore*, const QString& name);
+extern Err importMidi(MasterScore*, const io::path_t&);
 }
 
 muse::Ret NotationMidiReader::read(MasterScore* score, const muse::io::path_t& path, const Options&)
 {
-    Err err = importMidi(score, path.toQString());
+    TRACEFUNC;
+
+    Err err = importMidi(score, path);
     return make_ret(err, path);
 }

@@ -22,7 +22,8 @@
 
 #include <set>
 
-#include <QFile>
+#include "global/io/file.h"
+#include "global/io/path.h"
 
 #include "translation.h"
 
@@ -81,6 +82,7 @@
 
 #include "log.h"
 
+using namespace muse;
 using namespace mu::engraving;
 
 namespace mu::iex::midi {
@@ -1239,13 +1241,14 @@ void loadMidiData(MidiFile& mf)
     }
 }
 
-Err importMidi(MasterScore* score, const QString& name)
+Err importMidi(MasterScore* score, const io::path_t& filePath)
 {
-    if (name.isEmpty()) {
+    if (filePath.empty()) {
         return Err::FileNotFound;
     }
 
     auto& opers = midiImportOperations;
+    const QString name = filePath.toQString();
 
     MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, name);
     if (!opers.hasMidiFile(name)) {
@@ -1253,29 +1256,41 @@ Err importMidi(MasterScore* score, const QString& name)
     }
 
     if (opers.data()->processingsOfOpenedFile == 0) {
-        QFile fp(name);
-        if (!fp.open(QIODevice::ReadOnly)) {
-            LOGD("importMidi: file open error <%s>", qPrintable(name));
+        io::File file(filePath);
+        if (!file.open(io::IODevice::ReadOnly)) {
+            LOGE() << "file open error " << name;
             return Err::FileOpenError;
         }
-        MidiFile mf;
-        try {
-            mf.read(&fp);
-        }
-        catch (QString errorText) {
+
+        MidiFile::Result<MidiFile> midiFile = MidiFile::read(file);
+        if (!midiFile) {
+            const MidiFile::Error& error = midiFile.error();
+            const String message = [&] {
+                if (error.code == MidiFile::ErrCode::IoError) {
+                    return String("%1\n  IODevice details: %2")
+                           .arg(error.toString())
+                           .arg(String::fromUtf8(file.errorString()));
+                }
+
+                return error.toString();
+            }();
+
             if (!MScore::noGui) {
                 MessageBox(score->iocContext()).warning(muse::trc("iex_midi", "Import MIDI"),
-                                                        muse::qtrc("iex_midi", "Import failed: %1").arg(errorText).toStdString(),
+                                                        muse::mtrc("iex_midi", "Import failed: %1")
+                                                        .arg(message).toStdString(),
                                                         { MessageBox::Ok });
             }
-            fp.close();
-            LOGD("importMidi: bad file format");
+
+            LOGE() << "failed to read MIDI file: " << message;
+
             return Err::FileBadFormat;
         }
-        fp.close();
 
-        loadMidiData(mf);
-        opers.setMidiFileData(name, mf);
+        file.close();
+
+        loadMidiData(midiFile.value());
+        opers.setMidiFileData(name, midiFile.value());
     }
 
     opers.data()->tracks = convertMidi(score, opers.midiFile(name));

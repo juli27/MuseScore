@@ -19,28 +19,563 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 #include "midifile.h"
 
-#include "containers.h"
+#include <array>
+#include <optional>
+#include <tuple>
+#include <utility>
+#include <variant>
 
-#include "log.h"
+#include "global/containers.h"
+#include "global/functional.h"
+#include "global/io/iodevice.h"
+#include "global/serialization/binaryreader.h"
+#include "global/types/expected.h"
+
+#include "global/log.h"
+
+using namespace std::literals;
 
 using namespace mu::engraving;
+using namespace muse;
 
 namespace mu::iex::midi {
-MidiFile::MidiFile()
-{
-    fp               = 0;
-    _division        = 0;
-    _isDivisionInTps = false;
-    _format          = 1;
-    _noRunningStatus = false;
+namespace {
+using ChunkType = std::array<std::uint8_t, 4>;
+constexpr ChunkType HEADER_CHUNK_TYPE = { 'M', 'T', 'h', 'd' };
+constexpr ChunkType TRACK_CHUNK_TYPE = { 'M', 'T', 'r', 'k' };
 
-    status           = 0;
-    sstatus          = 0;
-    click            = 0;
-    curPos           = 0;
+struct ChunkHeader {
+    ChunkType chunkType = {};
+    std::uint32_t dataSizeInBytes = 0;
+};
+
+struct TicksPerQuarterNote {
+    std::uint16_t value = 0;
+};
+
+struct TicksPerFrame {
+    std::uint8_t framesPerSecond = 0;
+    std::uint8_t ticksPerFrame = 0;
+};
+
+using Division = std::variant<TicksPerQuarterNote, TicksPerFrame>;
+
+constexpr Division toDivision(const std::uint16_t division)
+{
+    // Spec:
+    //                        2 bytes
+    //  +-------+---+-------------------+-----------------+
+    //  |  bit  |15 | 14              8 | 7             0 |
+    //  +-------+---+-------------------------------------+
+    //  |       | 0 |       ticks per quarter note        |
+    //  | value +---+-------------------------------------+
+    //  |       | 1 |  -frames/second   |   ticks/frame   |
+    //  +-------+---+-------------------+-----------------+
+    if (division & 0x8000) {
+        const auto negativeFps = static_cast<std::int8_t>((division & 0xff00) >> 8);
+        const auto framesPerSecond = static_cast<std::uint8_t>(-negativeFps);
+        const auto ticksPerFrame = static_cast<std::uint8_t>(division & 0x00ff);
+
+        return TicksPerFrame{ framesPerSecond, ticksPerFrame };
+    }
+
+    return TicksPerQuarterNote{ division };
+}
+
+struct HeaderData {
+    MidiFileFormat format = {};
+    std::uint16_t numTracks = 0;
+    Division division = {};
+};
+
+bool isStatusByte(const std::uint8_t b)
+{
+    return b & 0x80;
+}
+
+bool isDataByte(const std::uint8_t b)
+{
+    return !isStatusByte(b);
+}
+
+bool isChannelStatusByte(const std::uint8_t b)
+{
+    return isStatusByte(b) && b < 0xf0;
+}
+
+class MidiFileReader
+{
+public:
+    using ErrCode = MidiFile::ErrCode;
+    using Error = MidiFile::Error;
+    template<typename T>
+    using Result = MidiFile::Result<T>;
+
+    explicit MidiFileReader(io::IODevice* in)
+        : m_in{in} {}
+
+    Result<MidiFile> read()
+    {
+        // Spec: "A MIDI file always starts with a header chunk, ..."
+        Result<HeaderData> headerData = readChunkHeader()
+                                        .and_then(bindThis(&MidiFileReader::readHeader, this));
+        RETURN_UNEXPECTED(headerData);
+
+        // TODO: read tracks anyway? provide user with choice?
+        if (headerData->format == MidiFileFormat::IndependentMultiTrack) {
+            return Unexpected(emitError(ErrCode::UnsupportedFileFormat));
+        }
+
+        // Spec "... and is followed by one or more track chunks."
+        Result<std::vector<MidiTrack> > tracks = readTracks();
+        RETURN_UNEXPECTED(tracks);
+
+        if (tracks->empty()) {
+            return Unexpected(emitError(ErrCode::NoTracks));
+        }
+
+        if (tracks->size() != headerData->numTracks) {
+            LOGW() << "expected " << headerData->numTracks << "tracks, but found " << tracks->size();
+        }
+
+        const auto convertDivision = Overloaded {
+            [](const TicksPerQuarterNote& d) { return std::tuple { d.value, false }; },
+            [](const TicksPerFrame& d) {
+                const std::uint16_t division = d.framesPerSecond == 29
+                                               ? std::round(d.ticksPerFrame * 29.97)
+                                               : d.ticksPerFrame * d.framesPerSecond;
+
+                return std::tuple { division, true };
+            } };
+
+        // TODO: use Division type in MidiFile instead of converting here
+        const auto [division, isDivisionInTps] = std::visit(convertDivision, headerData->division);
+
+        return MidiFile { std::move(*tracks), division, isDivisionInTps };
+    }
+
+private:
+    BinaryReader m_in;
+    int m_click = 0;
+    std::optional<std::uint8_t> m_runningStatus;
+
+    Result<std::vector<MidiTrack> > readTracks()
+    {
+        std::vector<MidiTrack> tracks{};
+        while (m_in.device()->isReadable()) {
+            // Spec: "Your programs should expect alien chunks and treat them as if they weren't there."
+            Result<ChunkHeader> header = readChunkHeader();
+            while (header && header->chunkType != TRACK_CHUNK_TYPE) {
+                if (m_in.device()->skip(header->dataSizeInBytes) != header->dataSizeInBytes) {
+                    // EOF could happen when there's junk (padding) at the end of the file
+                    LOGW() << "unexpected EOF while skipping unrecognized chunk";
+
+                    // return what we have so far
+                    return tracks;
+                }
+
+                header = readChunkHeader();
+            }
+
+            if (!header && header.error().code == ErrCode::EndOfFile) {
+                const Error& error = header.error();
+                // EOF could happen when there's junk (padding) at the end of the file
+                LOGW() << "unexpected EOF while reading next chunk header at " << error.devicePos;
+
+                // return what we have so far
+                return tracks;
+            }
+            RETURN_UNEXPECTED(header);
+
+            Result<MidiTrack> track = readTrack(header.value());
+            RETURN_UNEXPECTED(track);
+
+            tracks.push_back(std::move(track.value()));
+        }
+
+        return tracks;
+    }
+
+    Result<MidiTrack> readTrack(const ChunkHeader& chunkHeader)
+    {
+        // Spec: "<Track Chunk> = 'MTrk' <length> <MTrk event>+"
+
+        if (chunkHeader.chunkType != TRACK_CHUNK_TYPE) {
+            return Unexpected(emitError(ErrCode::InvalidChunkType));
+        }
+
+        m_runningStatus.reset();
+        m_click = 0;
+
+        MidiTrack track{};
+        track.setOutPort(0);
+
+        const std::size_t startPos = m_in.device()->pos();
+        const auto hasMoreData = [&]() -> bool {
+            io::IODevice* device = m_in.device();
+            const std::size_t endPos = startPos + chunkHeader.dataSizeInBytes;
+
+            return device->isReadable() && (device->pos() < endPos);
+        };
+
+        while (hasMoreData()) {
+            Result<MidiEvent> event = readTrackEvent();
+            RETURN_UNEXPECTED(event);
+
+            track.insert(m_click, std::move(*event));
+
+            if ((event->type() == ME_META) && (event->metaType() == META_EOT)) {
+                break;
+            }
+        }
+
+        // we could have read more bytes than what is part of this track chunk
+        if (m_in.device()->pos() > startPos + chunkHeader.dataSizeInBytes) {
+            return Unexpected(emitError(ErrCode::InvalidChunkSize));
+        }
+
+        // skip unused bytes in chunk
+        const std::size_t numRead = m_in.device()->pos() - startPos;
+        const std::size_t numSkipped = m_in.device()->skip(chunkHeader.dataSizeInBytes - numRead);
+        if (numSkipped != 0) {
+            LOGW() << "track chunk has more data";
+        }
+
+        // Spec: "([...] at least one MTrk event must be present)"
+        if (track.events().empty()) {
+            return Unexpected(emitError(ErrCode::EmptyTrack));
+        }
+
+        return track;
+    }
+
+    Result<MidiEvent> readTrackEvent()
+    {
+        // Spec: "<MTrk event> = <delta-time> <event>"
+        // Spec: "<event> = <MIDI event> | <sysex event> | <meta-event>"
+
+        Result<std::int32_t> deltaTime = readVarInt();
+        RETURN_UNEXPECTED(deltaTime);
+
+        m_click += *deltaTime;
+
+        // status byte or data byte
+        Result<std::uint8_t> firstByte = m_in.readByte()
+                                         .transform_error(bindThis(&MidiFileReader::mapError, this));
+        RETURN_UNEXPECTED(firstByte);
+
+        if (isDataByte(*firstByte)) {
+            if (!m_runningStatus) {
+                return Unexpected(emitError(ErrCode::NoRunningStatus));
+            }
+
+            return readMidiEvent(*m_runningStatus, *firstByte);
+        }
+
+        // first byte is status byte
+
+        if (isChannelStatusByte(*firstByte)) {
+            m_runningStatus = *firstByte;
+
+            return readMidiEvent(*firstByte);
+        }
+
+        if (*firstByte == ME_META) {
+            // Spec: "Sysex events and meta-events cancel any running status which was in effect."
+            m_runningStatus.reset();
+
+            return readMetaEvent();
+        }
+
+        // TODO: these should not be treated the same
+        if (*firstByte == ME_SYSEX || *firstByte == ME_ENDSYSEX) {
+            // Spec: "Sysex events and meta-events cancel any running status which was in effect."
+            m_runningStatus.reset();
+
+            return readSysExEvent();
+        }
+
+        return Unexpected(emitError(ErrCode::InvalidStatusByte));
+    }
+
+    Result<MidiEvent> readMidiEvent(const std::uint8_t status)
+    {
+        Result<std::uint8_t> firstDataByte = readDataByte();
+        RETURN_UNEXPECTED(firstDataByte);
+
+        return readMidiEvent(status, *firstDataByte);
+    }
+
+    Result<MidiEvent> readMidiEvent(const std::uint8_t status, const std::uint8_t firstDataByte)
+    {
+        const auto type = static_cast<std::uint8_t>(status & 0xf0);
+        const auto channel = static_cast<std::uint8_t>(status & 0x0f);
+
+        MidiEvent event {};
+        event.setType(type);
+        event.setChannel(channel);
+
+        if (type == ME_PROGRAM) {
+            event.setValue(firstDataByte);
+
+            return event;
+        }
+
+        if (type == ME_AFTERTOUCH) {
+            event.setType(ME_CONTROLLER);
+            event.setController(CTRL_PRESS);
+            event.setValue(firstDataByte);
+
+            return event;
+        }
+
+        Result<std::uint8_t> secondDataByte = readDataByte();
+        RETURN_UNEXPECTED(secondDataByte);
+
+        switch (type) {
+        case ME_NOTEOFF:
+        case ME_NOTEON:
+        case ME_PITCHBEND:
+            event.setDataA(firstDataByte);
+            event.setDataB(*secondDataByte);
+            break;
+        case ME_POLYAFTER:
+            event.setType(ME_CONTROLLER);
+            event.setController(CTRL_POLYAFTER);
+            event.setValue((firstDataByte << 8) + *secondDataByte);
+            break;
+        case ME_CONTROLLER:
+            event.setController(firstDataByte);
+            event.setValue(*secondDataByte);
+            break;
+        default:
+            return Unexpected(emitError(ErrCode::InvalidStatusByte));
+        }
+
+        return event;
+    }
+
+    Result<MidiEvent> readMetaEvent()
+    {
+        // Spec: "FF <type> <length> <bytes>"
+
+        const auto toReadError = bindThis(&MidiFileReader::mapError, this);
+
+        // Spec: "[...] future meta-events may be designed which may not be known to existing programs,
+        //        so programs must properly ignore meta-events which they do not recognize, [...]"
+        Result<std::uint8_t> type = m_in.readByte()
+                                    .transform_error(toReadError);
+        RETURN_UNEXPECTED(type);
+
+        // Spec: "If there is no data, the length is 0."
+        Result<std::int32_t> numDataBytes = readVarInt();
+        RETURN_UNEXPECTED(numDataBytes);
+
+        Result<std::vector<std::uint8_t> > data = m_in.readNBytes(*numDataBytes)
+                                                  .transform_error(toReadError);
+        RETURN_UNEXPECTED(data);
+
+        // FIXME: import code expects null termination when data is a string
+        data->push_back(0);
+
+        MidiEvent event{};
+        event.setType(ME_META);
+        event.setMetaType(*type);
+        event.setLen(*numDataBytes);
+        event.setEData(std::move(*data));
+
+        return event;
+    }
+
+    Result<MidiEvent> readSysExEvent()
+    {
+        Result<std::int32_t> numDataBytes = readVarInt();
+        RETURN_UNEXPECTED(numDataBytes);
+
+        Result<std::vector<std::uint8_t> > data = m_in.readNBytes(*numDataBytes)
+                                                  .transform_error(bindThis(&MidiFileReader::mapError, this));
+        RETURN_UNEXPECTED(data);
+
+        int len = *numDataBytes;
+        if (len > 0 && (*data)[len - 1] == ME_ENDSYSEX) {
+            // don't count 0xf7
+            len--;
+        }
+
+        MidiEvent event {};
+        event.setType(ME_SYSEX);
+        event.setEData(std::move(*data));
+        event.setLen(len);
+
+        return event;
+    }
+
+    Result<std::uint8_t> readDataByte()
+    {
+        Result<std::uint8_t> byte = m_in.readByte()
+                                    .transform_error(bindThis(&MidiFileReader::mapError, this));
+        RETURN_UNEXPECTED(byte);
+
+        if (!isDataByte(*byte)) {
+            return Unexpected(emitError(ErrCode::InvalidDataByte));
+        }
+
+        return byte;
+    }
+
+    // Spec: "Some numbers in MIDI Files are represented in a form called a variable-length quantity."
+    //       "These numbers are represented 7 bits per byte, most significant bits first."
+    Result<std::int32_t> readVarInt()
+    {
+        // Spec: "The largest number which is allowed is 0FFFFFFF [...]"
+        constexpr int MAX_BYTES = 4;
+
+        std::int32_t value = 0;
+        for (int i = 0; i < MAX_BYTES; i++) {
+            Result<std::uint8_t> b = m_in.readByte()
+                                     .transform_error(bindThis(&MidiFileReader::mapError, this));
+            RETURN_UNEXPECTED(b);
+
+            // Spec: "All bytes except the last have bit 7 set, and the last byte has bit 7 clear."
+            value += (*b & 0x7f);
+            if (!(*b & 0x80)) {
+                return value;
+            }
+            value <<= 7;
+        }
+
+        return Unexpected(emitError(ErrCode::InvalidVarInt));
+    }
+
+    Result<HeaderData> readHeader(const ChunkHeader& chunkHeader)
+    {
+        // Spec: "<Header Chunk> = 'MThd' <length> <format> <ntrks> <division>"
+
+        if (chunkHeader.chunkType != HEADER_CHUNK_TYPE) {
+            return Unexpected(emitError(ErrCode::InvalidChunkType));
+        }
+
+        constexpr std::uint32_t HEADER_CHUNK_SIZE = 6;
+        if (chunkHeader.dataSizeInBytes < HEADER_CHUNK_SIZE) {
+            return Unexpected(emitError(ErrCode::InvalidChunkSize));
+        }
+
+        const auto mapError = bindThis(&MidiFileReader::mapError, this);
+
+        Result<MidiFileFormat> format = m_in.readUInt16BE()
+                                        .transform_error(mapError)
+                                        .and_then(bindThis(&MidiFileReader::toFormat, this));
+        RETURN_UNEXPECTED(format);
+
+        Result<std::uint16_t> numTracks = m_in.readUInt16BE()
+                                          .transform_error(mapError);
+        RETURN_UNEXPECTED(numTracks);
+
+        Result<Division> division = m_in.readUInt16BE()
+                                    .transform_error(mapError)
+                                    .transform(&toDivision);
+        RETURN_UNEXPECTED(division);
+
+        // Spec: "[...] it is important to read and honor the length, even if it is longer than 6."
+        const std::size_t numSkippedBytes = m_in.device()->skip(chunkHeader.dataSizeInBytes - HEADER_CHUNK_SIZE);
+        if (numSkippedBytes != 0) {
+            LOGW() << "header chunk has more data";
+        }
+
+        return HeaderData{ *format, * numTracks, * division };
+    }
+
+    Result<ChunkHeader> readChunkHeader()
+    {
+        const auto mapError = bindThis(&MidiFileReader::mapError, this);
+
+        Result<ChunkType> chunkType = m_in.readNBytes<4>()
+                                      .transform_error(mapError);
+        RETURN_UNEXPECTED(chunkType);
+
+        Result<std::uint32_t> dataSizeInBytes = m_in.readUInt32BE()
+                                                .transform_error(mapError);
+        RETURN_UNEXPECTED(dataSizeInBytes);
+
+        return ChunkHeader{ *chunkType, * dataSizeInBytes };
+    }
+
+    Error emitError(const ErrCode code)
+    {
+        return Error{
+            code,
+            m_in.device()->pos(),
+        };
+    }
+
+    Error mapError(const BinaryReader::Error& error)
+    {
+        const ErrCode code = [&] {
+            switch (error.code) {
+            case BinaryReader::ErrCode::IoError:
+                return ErrCode::IoError;
+
+            case BinaryReader::ErrCode::EndOfFile:
+                return ErrCode::EndOfFile;
+
+            default:
+                return ErrCode::IoError;
+            }
+        }();
+
+        return Error{ code, error.devicePos };
+    }
+
+    Result<MidiFileFormat> toFormat(const std::uint16_t format)
+    {
+        std::optional<MidiFileFormat> f = toMidiFileFormat(format);
+        if (!f.has_value()) {
+            return Unexpected(emitError(ErrCode::UnsupportedFileFormat));
+        }
+
+        return *f;
+    }
+};
+} // namespace
+
+std::string_view MidiFile::getName(const ErrCode code)
+{
+    switch (code) {
+    case ErrCode::IoError:
+        return "IoError"sv;
+    case ErrCode::EndOfFile:
+        return "EndOfFile"sv;
+    case ErrCode::UnsupportedFileFormat:
+        return "UnsupportedFileFormat"sv;
+    case ErrCode::InvalidChunkType:
+        return "InvalidChunkType"sv;
+    case ErrCode::InvalidChunkSize:
+        return "InvalidChunkSize"sv;
+    case ErrCode::NoTracks:
+        return "NoTracks"sv;
+    case ErrCode::EmptyTrack:
+        return "EmptyTrack"sv;
+    case ErrCode::NoRunningStatus:
+        return "NoRunningStatus"sv;
+    case ErrCode::InvalidVarInt:
+        return "InvalidVarInt"sv;
+    case ErrCode::InvalidDataByte:
+        return "InvalidDataByte"sv;
+    case ErrCode::InvalidStatusByte:
+        return "InvalidStatusByte"sv;
+    default:
+        UNREACHABLE;
+        return "UnknownError"sv;
+    }
+}
+
+String MidiFile::Error::toString() const
+{
+    return String(u"%1 at position %2")
+           .arg(String::fromUtf8(getName(code)))
+           .arg(String::number(devicePos));
 }
 
 //---------------------------------------------------------
@@ -53,7 +588,7 @@ bool MidiFile::write(QIODevice* out)
     fp = out;
     write("MThd", 4);
     writeLong(6);                   // header len
-    writeShort(_format);            // format
+    writeShort(static_cast<int>(_format));
     writeShort(static_cast<int>(_tracks.size()));
     writeShort(_division);
     for (const auto& t: _tracks) {
@@ -188,167 +723,17 @@ void MidiFile::writeStatus(int nstat, int c)
     }
 }
 
-//---------------------------------------------------------
-//   readMidi
-//    return false on error
-//---------------------------------------------------------
-
-bool MidiFile::read(QIODevice* in)
+MidiFile::Result<MidiFile> MidiFile::read(io::IODevice& in)
 {
-    fp = in;
-    _tracks.clear();
-    curPos    = 0;
+    TRACEFUNC;
+    MidiFileReader reader{ &in };
 
-    // === Read header_chunk = "MThd" + <header_length> + <format> + <n> + <division>
-    //
-    // "MThd" 4 bytes
-    //    the literal string MThd, or in hexadecimal notation: 0x4d546864.
-    //    These four characters at the start of the MIDI file
-    //    indicate that this is a MIDI file.
-    // <header_length> 4 bytes
-    //    length of the header chunk (always =6 bytes long - the size of the next
-    //    three fields which are considered the header chunk).
-    //    Although the header chunk currently always contains 6 bytes of data,
-    //    this should not be assumed, this value should always be read and acted upon,
-    //    to allow for possible future extension to the standard.
-    // <format> 2 bytes
-    //    0 = single track file format
-    //    1 = multiple track file format
-    //    2 = multiple song file format (i.e., a series of type 0 files)
-    // <n> 2 bytes
-    //    number of track chunks that follow the header chunk
-    // <division> 2 bytes
-    //    unit of time for delta timing. If the value is positive, then it represents
-    //    the units per beat. For example, +96 would mean 96 ticks per beat.
-    //    If the value is negative, delta times are in SMPTE compatible units.
-
-    char tmp[4];
-
-    read(tmp, 4);
-    int len = readLong();
-    if (memcmp(tmp, "MThd", 4) || len < 6) {
-        throw(QString("bad midifile: MThd expected"));
-    }
-
-    if (len > 6) {
-        throw(QString("unsupported MIDI header data size: %1 instead of 6").arg(len));
-    }
-
-    _format     = readShort();
-    int ntracks = readShort();
-
-    // ================ Read MIDI division =================
-    //
-    //                        2 bytes
-    //  +-------+---+-------------------+-----------------+
-    //  |  bit  |15 | 14              8 | 7             0 |
-    //  +-------+---+-------------------------------------+
-    //  |       | 0 |       ticks per quarter note        |
-    //  | value +---+-------------------------------------+
-    //  |       | 1 |  -frames/second   |   ticks/frame   |
-    //  +-------+---+-------------------+-----------------+
-
-    char firstByte;
-    fp->getChar(&firstByte);
-    char secondByte;
-    fp->getChar(&secondByte);
-    const char topBit = (firstByte & 0x80) >> 7;
-
-    if (topBit == 0) {              // ticks per beat
-        _isDivisionInTps = false;
-        _division = (firstByte << 8) | (secondByte & 0xff);
-    } else {                        // ticks per second = fps * ticks per frame
-        _isDivisionInTps = true;
-        const int framesPerSecond = -((signed char)firstByte);
-        const int ticksPerFrame = secondByte;
-        if (framesPerSecond == 29) {
-            _division = qRound(29.97 * ticksPerFrame);
-        } else {
-            _division = framesPerSecond * ticksPerFrame;
-        }
-    }
-
-    // =====================================================
-
-    switch (_format) {
-    case 0:
-        if (readTrack()) {
-            return false;
-        }
-        break;
-    case 1:
-        for (int i = 0; i < ntracks; i++) {
-            if (readTrack()) {
-                return false;
-            }
-        }
-        break;
-    default:
-        throw(QString("midi file format %1 not implemented").arg(_format));
-
-        // Prevent "unreachable code" warning
-        // return false;
-    }
-    return true;
+    return reader.read();
 }
 
-//---------------------------------------------------------
-//   readTrack
-//    return true on error
-//---------------------------------------------------------
-
-bool MidiFile::readTrack()
+MidiFile::MidiFile(std::vector<MidiTrack> tracks, const int division, const bool isDivisionInTps)
+    : _tracks{std::move(tracks)}, _division{division}, _isDivisionInTps{isDivisionInTps}
 {
-    char tmp[4];
-    read(tmp, 4);
-    if (memcmp(tmp, "MTrk", 4)) {
-        throw(QString("bad midifile: MTrk expected"));
-    }
-    int len       = readLong();         // len
-    qint64 endPos = curPos + len;
-    status        = -1;
-    sstatus       = -1;    // running status, will not be reset on meta or sysex
-    click         =  0;
-    _tracks.push_back(MidiTrack());
-
-    int port = 0;
-    _tracks.back().setOutPort(port);
-    _tracks.back().setOutChannel(-1);
-
-    for (;;) {
-        MidiEvent event;
-        if (!readEvent(&event)) {
-            return true;
-        }
-
-        // check for end of track:
-        if ((event.type() == ME_META) && (event.metaType() == META_EOT)) {
-            break;
-        }
-        _tracks.back().insert(click, event);
-    }
-    if (curPos != endPos) {
-        LOGW("bad track len: %lld != %lld, %lld bytes too much\n", endPos, curPos, endPos - curPos);
-        if (curPos < endPos) {
-            LOGW("  skip %lld\n", endPos - curPos);
-            fp->skip(endPos - curPos);
-        }
-    }
-    return false;
-}
-
-/*---------------------------------------------------------
- *    read
- *    return false on error
- *---------------------------------------------------------*/
-
-void MidiFile::read(void* p, qint64 len)
-{
-    curPos += len;
-    qint64 rv = fp->read((char*)p, len);
-    if (rv != len) {
-        throw(QString("bad midifile: unexpected EOF"));
-    }
 }
 
 //---------------------------------------------------------
@@ -366,22 +751,6 @@ bool MidiFile::write(const void* p, qint64 len)
 }
 
 //---------------------------------------------------------
-//   readShort
-//---------------------------------------------------------
-
-int MidiFile::readShort()
-{
-    char c;
-    int val = 0;
-    for (int i = 0; i < 2; ++i) {
-        fp->getChar(&c);
-        val <<= 8;
-        val += (c & 0xff);
-    }
-    return val;
-}
-
-//---------------------------------------------------------
 //   writeShort
 //---------------------------------------------------------
 
@@ -389,23 +758,6 @@ void MidiFile::writeShort(int i)
 {
     fp->putChar(i >> 8);
     fp->putChar(i);
-}
-
-//---------------------------------------------------------
-//   readLong
-//   writeLong
-//---------------------------------------------------------
-
-int MidiFile::readLong()
-{
-    char c;
-    int val = 0;
-    for (int i = 0; i < 4; ++i) {
-        fp->getChar(&c);
-        val <<= 8;
-        val += (c & 0xff);
-    }
-    return val;
 }
 
 //---------------------------------------------------------
@@ -418,26 +770,6 @@ void MidiFile::writeLong(int i)
     fp->putChar(i >> 16);
     fp->putChar(i >> 8);
     fp->putChar(i);
-}
-
-/*---------------------------------------------------------
- *    getvl
- *    Read variable-length number (7 bits per byte, MSB first)
- *---------------------------------------------------------*/
-
-int MidiFile::getvl()
-{
-    int l = 0;
-    for (int i = 0; i < 16; i++) {
-        uchar c;
-        read(&c, 1);
-        l += (c & 0x7f);
-        if (!(c & 0x80)) {
-            return l;
-        }
-        l <<= 7;
-    }
-    return -1;
 }
 
 /*---------------------------------------------------------
@@ -464,174 +796,12 @@ void MidiFile::putvl(unsigned val)
 }
 
 //---------------------------------------------------------
-//   MidiTrack
-//---------------------------------------------------------
-
-MidiTrack::MidiTrack()
-{
-    _outChannel = -1;
-    _outPort    = -1;
-    _drumTrack  = false;
-}
-
-MidiTrack::~MidiTrack()
-{
-}
-
-//---------------------------------------------------------
 //   insert
 //---------------------------------------------------------
 
 void MidiTrack::insert(int tick, const MidiEvent& event)
 {
     _events.insert({ tick, event });
-}
-
-//---------------------------------------------------------
-//   readEvent
-//    return true on success
-//---------------------------------------------------------
-
-bool MidiFile::readEvent(MidiEvent* event)
-{
-    uchar me, a, b;
-
-    int nclick = getvl();
-    if (nclick == -1) {
-        LOGD("readEvent: error 1(getvl)");
-        return false;
-    }
-    click += nclick;
-    for (;;) {
-        read(&me, 1);
-        if (me >= 0xf1 && me <= 0xfe && me != 0xf7) {
-            LOGD("MIDI: Unknown Message 0x%02x", me & 0xff);
-        } else {
-            break;
-        }
-    }
-
-    int dataLen;
-
-    if (me == 0xf0 || me == 0xf7) {
-        status  = -1;                      // no running status
-        int len = getvl();
-        if (len == -1) {
-            LOGD("readEvent: error 3");
-            return false;
-        }
-        dataLen = len;
-        std::vector<unsigned char> data(len + 1);
-        read(data.data(), len);
-        if (data[len - 1] != 0xf7) {
-            LOGD("SYSEX does not end with 0xf7!");
-            // more to come?
-        } else {
-            dataLen--;            // don't count 0xf7
-        }
-        event->setType(ME_SYSEX);
-        event->setEData(std::move(data));
-        event->setLen(dataLen);
-        return true;
-    }
-
-    if (me == ME_META) {
-        status = -1;                      // no running status
-        uchar type;
-        read(&type, 1);
-        dataLen = getvl();                    // read len
-        if (dataLen == -1) {
-            LOGD("readEvent: error 6");
-            return false;
-        }
-        std::vector<unsigned char> data(dataLen + 1);
-        if (dataLen) {
-            read(data.data(), dataLen);
-        }
-
-        event->setType(ME_META);
-        event->setMetaType(type);
-        event->setLen(dataLen);
-        event->setEData(std::move(data));
-        return true;
-    }
-
-    if (me & 0x80) {                       // status byte
-        status   = me;
-        sstatus  = status;
-        read(&a, 1);
-    } else {
-        if (status == -1) {
-            LOGD("readEvent: no running status, read 0x%02x", me);
-            LOGD("sstatus ist 0x%02x", sstatus);
-            if (sstatus == -1) {
-                return 0;
-            }
-            status = sstatus;
-        }
-        a = me;
-    }
-    int channel = status & 0x0f;
-    b           = 0;
-    switch (status & 0xf0) {
-    case ME_NOTEOFF:
-    case ME_NOTEON:
-    case ME_POLYAFTER:
-    case ME_CONTROLLER:                // controller
-    case ME_PITCHBEND:                // pitch bend
-        read(&b, 1);
-        break;
-    }
-    event->setType(status & 0xf0);
-    event->setChannel(channel);
-    switch (status & 0xf0) {
-    case ME_NOTEOFF:
-        event->setDataA(a & 0x7f);
-        event->setDataB(b & 0x7f);
-        break;
-    case ME_NOTEON:
-        event->setDataA(a & 0x7f);
-        event->setDataB(b & 0x7f);
-        break;
-    case ME_POLYAFTER:
-        event->setType(ME_CONTROLLER);
-        event->setController(CTRL_POLYAFTER);
-        event->setValue(((a & 0x7f) << 8) + (b & 0x7f));
-        break;
-    case ME_CONTROLLER:                // controller
-        event->setController(a & 0x7f);
-        event->setValue(b & 0x7f);
-        break;
-    case ME_PITCHBEND:                // pitch bend
-        event->setDataA(a & 0x7f);
-        event->setDataB(b & 0x7f);
-        break;
-    case ME_PROGRAM:
-        event->setValue(a & 0x7f);
-        break;
-    case ME_AFTERTOUCH:
-        event->setType(ME_CONTROLLER);
-        event->setController(CTRL_PRESS);
-        event->setValue(a & 0x7f);
-        break;
-    default:                  // f1 f2 f3 f4 f5 f6 f7 f8 f9
-        LOGD("BAD STATUS 0x%02x, me 0x%02x", status, me);
-        return false;
-    }
-
-    if ((a & 0x80) || (b & 0x80)) {
-        LOGD("8't bit in data set(%02x %02x): tick %d read 0x%02x  status:0x%02x",
-             a & 0xff, b & 0xff, click, me, status);
-        LOGD("readEvent: error 16");
-        if (b & 0x80) {
-            // Try to fix: interpret as channel byte
-            status   = b;
-            sstatus  = status;
-            return true;
-        }
-        return false;
-    }
-    return true;
 }
 
 //---------------------------------------------------------
