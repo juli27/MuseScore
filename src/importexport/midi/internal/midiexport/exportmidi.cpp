@@ -216,7 +216,7 @@ void ExportMidi::writeHeader(const CompatMidiRendererInternal::Context& context)
 bool ExportMidi::write(QIODevice* device, bool midiExpandRepeats, bool exportRPNs, const SynthesizerState& synthState)
 {
     m_midiFile.setDivision(Constants::DIVISION);
-    m_midiFile.setFormat(1);
+    m_midiFile.setFormat(MidiFileFormat::SimultaneousTracks);
     std::vector<MidiTrack>& tracks = m_midiFile.tracks();
 
     for (size_t i = 0; i < m_score->nstaves(); ++i) {

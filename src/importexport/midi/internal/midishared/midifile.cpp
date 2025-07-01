@@ -19,28 +19,51 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 #include "midifile.h"
 
-#include "containers.h"
+#include <utility>
 
-#include "log.h"
+#include "global/containers.h"
+
+#include "global/log.h"
+
+using namespace std::literals;
 
 using namespace mu::engraving;
+using namespace muse;
 
 namespace mu::iex::midi {
-MidiFile::MidiFile()
-{
-    fp               = 0;
-    _division        = 0;
-    _isDivisionInTps = false;
-    _format          = 1;
-    _noRunningStatus = false;
+#define ERR_CODE_TO_STRING(ec) \
+    case ErrCode::ec: \
+        return #ec##sv
 
-    status           = 0;
-    sstatus          = 0;
-    click            = 0;
-    curPos           = 0;
+std::string_view MidiFile::getName(const ErrCode code)
+{
+    switch (code) {
+    ERR_CODE_TO_STRING(IoError);
+    ERR_CODE_TO_STRING(EndOfFile);
+    ERR_CODE_TO_STRING(UnsupportedFileFormat);
+    ERR_CODE_TO_STRING(InvalidChunkType);
+    ERR_CODE_TO_STRING(InvalidChunkSize);
+    ERR_CODE_TO_STRING(NoTracks);
+    ERR_CODE_TO_STRING(EmptyTrack);
+    ERR_CODE_TO_STRING(NoRunningStatus);
+    ERR_CODE_TO_STRING(InvalidVarInt);
+    ERR_CODE_TO_STRING(InvalidDataByte);
+    ERR_CODE_TO_STRING(InvalidStatusByte);
+    }
+
+    UNREACHABLE;
+    return "UnknownError"sv;
+}
+
+#undef ERR_CODE_TO_STRING
+
+String MidiFile::Error::toString() const
+{
+    return String(u"%1 at position %2")
+           .arg(String::fromUtf8(getName(code)))
+           .arg(String::number(devicePos));
 }
 
 //---------------------------------------------------------
@@ -53,7 +76,7 @@ bool MidiFile::write(QIODevice* out)
     fp = out;
     write("MThd", 4);
     writeLong(6);                   // header len
-    writeShort(_format);            // format
+    writeShort(static_cast<int>(_format));
     writeShort(static_cast<int>(_tracks.size()));
     writeShort(_division);
     for (const auto& t: _tracks) {
@@ -188,167 +211,9 @@ void MidiFile::writeStatus(int nstat, int c)
     }
 }
 
-//---------------------------------------------------------
-//   readMidi
-//    return false on error
-//---------------------------------------------------------
-
-bool MidiFile::read(QIODevice* in)
+MidiFile::MidiFile(std::vector<MidiTrack> tracks, const int division, const bool isDivisionInTps)
+    : _tracks{std::move(tracks)}, _division{division}, _isDivisionInTps{isDivisionInTps}
 {
-    fp = in;
-    _tracks.clear();
-    curPos    = 0;
-
-    // === Read header_chunk = "MThd" + <header_length> + <format> + <n> + <division>
-    //
-    // "MThd" 4 bytes
-    //    the literal string MThd, or in hexadecimal notation: 0x4d546864.
-    //    These four characters at the start of the MIDI file
-    //    indicate that this is a MIDI file.
-    // <header_length> 4 bytes
-    //    length of the header chunk (always =6 bytes long - the size of the next
-    //    three fields which are considered the header chunk).
-    //    Although the header chunk currently always contains 6 bytes of data,
-    //    this should not be assumed, this value should always be read and acted upon,
-    //    to allow for possible future extension to the standard.
-    // <format> 2 bytes
-    //    0 = single track file format
-    //    1 = multiple track file format
-    //    2 = multiple song file format (i.e., a series of type 0 files)
-    // <n> 2 bytes
-    //    number of track chunks that follow the header chunk
-    // <division> 2 bytes
-    //    unit of time for delta timing. If the value is positive, then it represents
-    //    the units per beat. For example, +96 would mean 96 ticks per beat.
-    //    If the value is negative, delta times are in SMPTE compatible units.
-
-    char tmp[4];
-
-    read(tmp, 4);
-    int len = readLong();
-    if (memcmp(tmp, "MThd", 4) || len < 6) {
-        throw(QString("bad midifile: MThd expected"));
-    }
-
-    if (len > 6) {
-        throw(QString("unsupported MIDI header data size: %1 instead of 6").arg(len));
-    }
-
-    _format     = readShort();
-    int ntracks = readShort();
-
-    // ================ Read MIDI division =================
-    //
-    //                        2 bytes
-    //  +-------+---+-------------------+-----------------+
-    //  |  bit  |15 | 14              8 | 7             0 |
-    //  +-------+---+-------------------------------------+
-    //  |       | 0 |       ticks per quarter note        |
-    //  | value +---+-------------------------------------+
-    //  |       | 1 |  -frames/second   |   ticks/frame   |
-    //  +-------+---+-------------------+-----------------+
-
-    char firstByte;
-    fp->getChar(&firstByte);
-    char secondByte;
-    fp->getChar(&secondByte);
-    const char topBit = (firstByte & 0x80) >> 7;
-
-    if (topBit == 0) {              // ticks per beat
-        _isDivisionInTps = false;
-        _division = (firstByte << 8) | (secondByte & 0xff);
-    } else {                        // ticks per second = fps * ticks per frame
-        _isDivisionInTps = true;
-        const int framesPerSecond = -((signed char)firstByte);
-        const int ticksPerFrame = secondByte;
-        if (framesPerSecond == 29) {
-            _division = qRound(29.97 * ticksPerFrame);
-        } else {
-            _division = framesPerSecond * ticksPerFrame;
-        }
-    }
-
-    // =====================================================
-
-    switch (_format) {
-    case 0:
-        if (readTrack()) {
-            return false;
-        }
-        break;
-    case 1:
-        for (int i = 0; i < ntracks; i++) {
-            if (readTrack()) {
-                return false;
-            }
-        }
-        break;
-    default:
-        throw(QString("midi file format %1 not implemented").arg(_format));
-
-        // Prevent "unreachable code" warning
-        // return false;
-    }
-    return true;
-}
-
-//---------------------------------------------------------
-//   readTrack
-//    return true on error
-//---------------------------------------------------------
-
-bool MidiFile::readTrack()
-{
-    char tmp[4];
-    read(tmp, 4);
-    if (memcmp(tmp, "MTrk", 4)) {
-        throw(QString("bad midifile: MTrk expected"));
-    }
-    int len       = readLong();         // len
-    qint64 endPos = curPos + len;
-    status        = -1;
-    sstatus       = -1;    // running status, will not be reset on meta or sysex
-    click         =  0;
-    _tracks.push_back(MidiTrack());
-
-    int port = 0;
-    _tracks.back().setOutPort(port);
-    _tracks.back().setOutChannel(-1);
-
-    for (;;) {
-        MidiEvent event;
-        if (!readEvent(&event)) {
-            return true;
-        }
-
-        // check for end of track:
-        if ((event.type() == ME_META) && (event.metaType() == META_EOT)) {
-            break;
-        }
-        _tracks.back().insert(click, event);
-    }
-    if (curPos != endPos) {
-        LOGW("bad track len: %lld != %lld, %lld bytes too much\n", endPos, curPos, endPos - curPos);
-        if (curPos < endPos) {
-            LOGW("  skip %lld\n", endPos - curPos);
-            fp->skip(endPos - curPos);
-        }
-    }
-    return false;
-}
-
-/*---------------------------------------------------------
- *    read
- *    return false on error
- *---------------------------------------------------------*/
-
-void MidiFile::read(void* p, qint64 len)
-{
-    curPos += len;
-    qint64 rv = fp->read((char*)p, len);
-    if (rv != len) {
-        throw(QString("bad midifile: unexpected EOF"));
-    }
 }
 
 //---------------------------------------------------------
@@ -366,22 +231,6 @@ bool MidiFile::write(const void* p, qint64 len)
 }
 
 //---------------------------------------------------------
-//   readShort
-//---------------------------------------------------------
-
-int MidiFile::readShort()
-{
-    char c;
-    int val = 0;
-    for (int i = 0; i < 2; ++i) {
-        fp->getChar(&c);
-        val <<= 8;
-        val += (c & 0xff);
-    }
-    return val;
-}
-
-//---------------------------------------------------------
 //   writeShort
 //---------------------------------------------------------
 
@@ -389,23 +238,6 @@ void MidiFile::writeShort(int i)
 {
     fp->putChar(i >> 8);
     fp->putChar(i);
-}
-
-//---------------------------------------------------------
-//   readLong
-//   writeLong
-//---------------------------------------------------------
-
-int MidiFile::readLong()
-{
-    char c;
-    int val = 0;
-    for (int i = 0; i < 4; ++i) {
-        fp->getChar(&c);
-        val <<= 8;
-        val += (c & 0xff);
-    }
-    return val;
 }
 
 //---------------------------------------------------------
@@ -418,26 +250,6 @@ void MidiFile::writeLong(int i)
     fp->putChar(i >> 16);
     fp->putChar(i >> 8);
     fp->putChar(i);
-}
-
-/*---------------------------------------------------------
- *    getvl
- *    Read variable-length number (7 bits per byte, MSB first)
- *---------------------------------------------------------*/
-
-int MidiFile::getvl()
-{
-    int l = 0;
-    for (int i = 0; i < 16; i++) {
-        uchar c;
-        read(&c, 1);
-        l += (c & 0x7f);
-        if (!(c & 0x80)) {
-            return l;
-        }
-        l <<= 7;
-    }
-    return -1;
 }
 
 /*---------------------------------------------------------
@@ -464,174 +276,12 @@ void MidiFile::putvl(unsigned val)
 }
 
 //---------------------------------------------------------
-//   MidiTrack
-//---------------------------------------------------------
-
-MidiTrack::MidiTrack()
-{
-    _outChannel = -1;
-    _outPort    = -1;
-    _drumTrack  = false;
-}
-
-MidiTrack::~MidiTrack()
-{
-}
-
-//---------------------------------------------------------
 //   insert
 //---------------------------------------------------------
 
 void MidiTrack::insert(int tick, const MidiEvent& event)
 {
     _events.insert({ tick, event });
-}
-
-//---------------------------------------------------------
-//   readEvent
-//    return true on success
-//---------------------------------------------------------
-
-bool MidiFile::readEvent(MidiEvent* event)
-{
-    uchar me, a, b;
-
-    int nclick = getvl();
-    if (nclick == -1) {
-        LOGD("readEvent: error 1(getvl)");
-        return false;
-    }
-    click += nclick;
-    for (;;) {
-        read(&me, 1);
-        if (me >= 0xf1 && me <= 0xfe && me != 0xf7) {
-            LOGD("MIDI: Unknown Message 0x%02x", me & 0xff);
-        } else {
-            break;
-        }
-    }
-
-    int dataLen;
-
-    if (me == 0xf0 || me == 0xf7) {
-        status  = -1;                      // no running status
-        int len = getvl();
-        if (len == -1) {
-            LOGD("readEvent: error 3");
-            return false;
-        }
-        dataLen = len;
-        std::vector<unsigned char> data(len + 1);
-        read(data.data(), len);
-        if (data[len - 1] != 0xf7) {
-            LOGD("SYSEX does not end with 0xf7!");
-            // more to come?
-        } else {
-            dataLen--;            // don't count 0xf7
-        }
-        event->setType(ME_SYSEX);
-        event->setEData(std::move(data));
-        event->setLen(dataLen);
-        return true;
-    }
-
-    if (me == ME_META) {
-        status = -1;                      // no running status
-        uchar type;
-        read(&type, 1);
-        dataLen = getvl();                    // read len
-        if (dataLen == -1) {
-            LOGD("readEvent: error 6");
-            return false;
-        }
-        std::vector<unsigned char> data(dataLen + 1);
-        if (dataLen) {
-            read(data.data(), dataLen);
-        }
-
-        event->setType(ME_META);
-        event->setMetaType(type);
-        event->setLen(dataLen);
-        event->setEData(std::move(data));
-        return true;
-    }
-
-    if (me & 0x80) {                       // status byte
-        status   = me;
-        sstatus  = status;
-        read(&a, 1);
-    } else {
-        if (status == -1) {
-            LOGD("readEvent: no running status, read 0x%02x", me);
-            LOGD("sstatus ist 0x%02x", sstatus);
-            if (sstatus == -1) {
-                return 0;
-            }
-            status = sstatus;
-        }
-        a = me;
-    }
-    int channel = status & 0x0f;
-    b           = 0;
-    switch (status & 0xf0) {
-    case ME_NOTEOFF:
-    case ME_NOTEON:
-    case ME_POLYAFTER:
-    case ME_CONTROLLER:                // controller
-    case ME_PITCHBEND:                // pitch bend
-        read(&b, 1);
-        break;
-    }
-    event->setType(status & 0xf0);
-    event->setChannel(channel);
-    switch (status & 0xf0) {
-    case ME_NOTEOFF:
-        event->setDataA(a & 0x7f);
-        event->setDataB(b & 0x7f);
-        break;
-    case ME_NOTEON:
-        event->setDataA(a & 0x7f);
-        event->setDataB(b & 0x7f);
-        break;
-    case ME_POLYAFTER:
-        event->setType(ME_CONTROLLER);
-        event->setController(CTRL_POLYAFTER);
-        event->setValue(((a & 0x7f) << 8) + (b & 0x7f));
-        break;
-    case ME_CONTROLLER:                // controller
-        event->setController(a & 0x7f);
-        event->setValue(b & 0x7f);
-        break;
-    case ME_PITCHBEND:                // pitch bend
-        event->setDataA(a & 0x7f);
-        event->setDataB(b & 0x7f);
-        break;
-    case ME_PROGRAM:
-        event->setValue(a & 0x7f);
-        break;
-    case ME_AFTERTOUCH:
-        event->setType(ME_CONTROLLER);
-        event->setController(CTRL_PRESS);
-        event->setValue(a & 0x7f);
-        break;
-    default:                  // f1 f2 f3 f4 f5 f6 f7 f8 f9
-        LOGD("BAD STATUS 0x%02x, me 0x%02x", status, me);
-        return false;
-    }
-
-    if ((a & 0x80) || (b & 0x80)) {
-        LOGD("8't bit in data set(%02x %02x): tick %d read 0x%02x  status:0x%02x",
-             a & 0xff, b & 0xff, click, me, status);
-        LOGD("readEvent: error 16");
-        if (b & 0x80) {
-            // Try to fix: interpret as channel byte
-            status   = b;
-            sstatus  = status;
-            return true;
-        }
-        return false;
-    }
-    return true;
 }
 
 //---------------------------------------------------------

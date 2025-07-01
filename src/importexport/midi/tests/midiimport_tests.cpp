@@ -45,7 +45,7 @@ using namespace mu::iex::midi;
 
 // forward declaration of private functions used in tests
 namespace mu::iex::midi {
-extern engraving::Err importMidi(engraving::MasterScore*, const QString& name);
+extern engraving::Err importMidi(engraving::MasterScore*, const io::path_t&);
 
 namespace MidiTuplet {
 bool isTupletAllowed(const TupletInfo& tupletInfo);
@@ -172,7 +172,7 @@ void MidiImportTests::importThenCompareWithRef(const char* file)
 std::unique_ptr<engraving::MasterScore> MidiImportTests::importMidi(const String& fileName)
 {
     const auto doImportMidi = [](engraving::MasterScore* score, const io::path_t& path) -> mu::engraving::Err {
-        return mu::iex::midi::importMidi(score, path.toQString());
+        return mu::iex::midi::importMidi(score, path);
     };
 
     return std::unique_ptr<engraving::MasterScore> { engraving::ScoreRW::readScore(fileName, true, doImportMidi) };

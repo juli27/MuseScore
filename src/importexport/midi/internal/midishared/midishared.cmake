@@ -4,4 +4,6 @@ set (MIDISHARED_SRC
     ${CMAKE_CURRENT_LIST_DIR}/midievent.h
     ${CMAKE_CURRENT_LIST_DIR}/midifile.cpp
     ${CMAKE_CURRENT_LIST_DIR}/midifile.h
+    ${CMAKE_CURRENT_LIST_DIR}/midifilereader.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/midifilereader.h
     )
