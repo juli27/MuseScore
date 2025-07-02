@@ -19,19 +19,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef IMPORTMIDI_CHORDNAME_H
-#define IMPORTMIDI_CHORDNAME_H
+#pragma once
 
-#include <map>
 #include <QList>
 
 namespace mu::iex::midi {
+class MidiFile;
 class MTrack;
 
 namespace MidiChordName {
-void findChordNames(const std::multimap<int, MTrack>& tracks);
+void findChordNames(const MidiFile&);
 void setChordNames(QList<MTrack>& tracks);
 } // namespace MidiChordName
 } // namespace mu::iex::midi
-
-#endif // IMPORTMIDI_CHORDNAME_H

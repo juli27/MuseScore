@@ -25,6 +25,8 @@
 
 #include "global/containers.h"
 
+#include "engraving/dom/durationtype.h"
+
 #include "importmidi_inner.h"
 #include "importmidi_chord.h"
 #include "importmidi_operations.h"
@@ -102,10 +104,11 @@ findFirstChordInRange(const std::multimap<ReducedFraction, MidiChord>& chords,
     return iter;
 }
 
-const ReducedFraction& minAllowedDuration()
+ReducedFraction minAllowedDuration()
 {
-    const static auto minDuration = ReducedFraction::fromTicks(engraving::Constants::DIVISION) / 32;
-    return minDuration;
+    const engraving::TDuration minDuration{ engraving::DurationType::V_128TH };
+
+    return ReducedFraction{ minDuration.fraction() };
 }
 
 ReducedFraction minNoteOffTime(const QList<MidiNote>& notes)

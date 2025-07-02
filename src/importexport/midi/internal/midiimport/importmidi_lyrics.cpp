@@ -66,7 +66,7 @@ extractLyricsFromTrack(const MidiTrack& track, int division, bool isDivisionInTp
     for (const auto& i: track.events()) {
         const auto& e = i.second;
         if (isLyricEvent(e)) {
-            const uchar* data = (uchar*)e.edata();
+            const uchar* data = e.edata();
             std::string text = MidiCharset::fromUchar(data);
             text.erase(text.find_last_not_of(' ') + 1);
             if (isLyricText(text)) {
