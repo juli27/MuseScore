@@ -20,6 +20,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <set>
 
 #include "global/io/file.h"
@@ -92,13 +93,13 @@ extern void updateNoteLines(Segment*, int track);
 
 void lengthenTooShortNotes(std::multimap<int, MTrack>& tracks)
 {
+    const ReducedFraction minDuration = MChord::minAllowedDuration();
+
     for (auto& track: tracks) {
         MTrack& mtrack = track.second;
-        for (auto& chord: mtrack.chords) {
-            for (auto& note: chord.second.notes) {
-                if (note.offTime - chord.first < MChord::minAllowedDuration()) {
-                    note.offTime = chord.first + MChord::minAllowedDuration();
-                }
+        for (auto& [onTime, chord]: mtrack.chords) {
+            for (auto& note: chord.notes) {
+                note.offTime = std::max(note.offTime, onTime + minDuration);
             }
         }
     }
@@ -723,7 +724,7 @@ std::multimap<int, MTrack> createMTrackList(TimeSigMap* sigmap, const MidiFile* 
         bool hasNotes = false;
         //  - create time signature list from meta events
         //  - create MidiChord list
-        //  - extract some information from track: program, min/max pitch
+        //  - extract some information from track: program, volume
         for (const auto& i: t.events()) {
             const MidiEvent& e = i.second;
             const auto tick = toMuseScoreTicks(i.first, track.division,
@@ -1139,26 +1140,29 @@ ReducedFraction findLastChordTick(const std::multimap<int, MTrack>& tracks)
 
 QList<MTrack> convertMidi(Score* score, const MidiFile* mf)
 {
-    auto* sigmap = score->sigmap();
+    TimeSigMap* sigmap = score->sigmap();
 
-    auto tracks = createMTrackList(sigmap, mf);
+    MidiOperations::Data& opers = midiImportOperations;
 
-    auto& opers = midiImportOperations;
-    if (opers.data()->processingsOfOpenedFile == 0) {         // for newly opened MIDI file
-        MidiChordName::findChordNames(tracks);
+    // for newly opened MIDI file
+    if (opers.data()->processingsOfOpenedFile == 0) {
+        MidiChordName::findChordNames(*mf);
+        MidiLyrics::extractLyricsToMidiData(mf);
     }
 
-    lengthenTooShortNotes(tracks);
-
-    if (opers.data()->processingsOfOpenedFile == 0) {         // for newly opened MIDI file
+    std::multimap<int, MTrack> tracks = createMTrackList(sigmap, mf);
+    // for newly opened MIDI file
+    if (opers.data()->processingsOfOpenedFile == 0) {
         opers.data()->trackCount = 0;
         for (const auto& track: tracks) {
             if (track.first != -1) {
                 ++opers.data()->trackCount;
             }
         }
-        MidiLyrics::extractLyricsToMidiData(mf);
     }
+
+    lengthenTooShortNotes(tracks);
+
     // for newly opened MIDI file - detect if it is a human performance
     // if so - detect beats and set initial time signature
     if (opers.data()->processingsOfOpenedFile == 0) {

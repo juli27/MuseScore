@@ -89,7 +89,7 @@ void setIfHumanPerformance(
     const std::multimap<int, MTrack>& tracks, engraving::TimeSigMap* sigmap);
 
 ReducedFraction quantizeValue(
-    const ReducedFraction& value, const ReducedFraction& quant);
+    const ReducedFraction& value, const ReducedFraction& step);
 
 ReducedFraction quantForLen(
     const ReducedFraction& noteLen, const ReducedFraction& basicQuant);

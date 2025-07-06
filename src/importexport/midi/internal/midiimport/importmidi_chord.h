@@ -120,9 +120,9 @@ Iter findEndChordInRange(const ReducedFraction& endRangeTick,
 ReducedFraction minNoteOffTime(const QList<MidiNote>& notes);
 ReducedFraction maxNoteOffTime(const QList<MidiNote>& notes);
 ReducedFraction minNoteLen(const std::pair<const ReducedFraction, MidiChord>& chord);
-ReducedFraction maxNoteLen(const std::pair<const ReducedFraction, MidiChord>& chord);
+ReducedFraction maxNoteLen(const ReducedFraction& onTime, const MidiChord&);
 
-const ReducedFraction& minAllowedDuration();
+ReducedFraction minAllowedDuration();
 ReducedFraction findMinDuration(const ReducedFraction& onTime, const QList<MidiChord>& midiChords, const ReducedFraction& length);
 void sortNotesByPitch(std::multimap<ReducedFraction, MidiChord>& chords);
 void sortNotesByLength(std::multimap<ReducedFraction, MidiChord>& chords);

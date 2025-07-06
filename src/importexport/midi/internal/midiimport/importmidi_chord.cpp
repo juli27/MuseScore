@@ -25,6 +25,8 @@
 
 #include "global/containers.h"
 
+#include "engraving/dom/durationtype.h"
+
 #include "importmidi_inner.h"
 #include "importmidi_chord.h"
 #include "importmidi_operations.h"
@@ -102,10 +104,11 @@ findFirstChordInRange(const std::multimap<ReducedFraction, MidiChord>& chords,
     return iter;
 }
 
-const ReducedFraction& minAllowedDuration()
+ReducedFraction minAllowedDuration()
 {
-    const static auto minDuration = ReducedFraction::fromTicks(engraving::Constants::DIVISION) / 32;
-    return minDuration;
+    const engraving::TDuration minDuration{ engraving::DurationType::V_128TH };
+
+    return ReducedFraction{ minDuration.fraction() };
 }
 
 ReducedFraction minNoteOffTime(const QList<MidiNote>& notes)
@@ -140,10 +143,10 @@ ReducedFraction minNoteLen(const std::pair<const ReducedFraction, MidiChord>& ch
     return minOffTime - chord.first;
 }
 
-ReducedFraction maxNoteLen(const std::pair<const ReducedFraction, MidiChord>& chord)
+ReducedFraction maxNoteLen(const ReducedFraction& onTime, const MidiChord& chord)
 {
-    const auto maxOffTime = maxNoteOffTime(chord.second.notes);
-    return maxOffTime - chord.first;
+    const auto maxOffTime = maxNoteOffTime(chord.notes);
+    return maxOffTime - onTime;
 }
 
 void removeOverlappingNotes(QList<MidiNote>& notes)

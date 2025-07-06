@@ -21,12 +21,14 @@
  */
 #include "importmidi_quant.h"
 
-#include <set>
+#include <algorithm>
 #include <deque>
+#include <set>
 
+#include "engraving/dom/durationtype.h"
 #include "engraving/dom/sig.h"
+
 #include "importmidi_fraction.h"
-#include "engraving/dom/mscore.h"
 #include "importmidi_chord.h"
 #include "importmidi_meter.h"
 #include "importmidi_tuplet.h"
@@ -168,15 +170,19 @@ ReducedFraction reduceQuantIfDottedNote(const ReducedFraction& noteLen,
 }
 
 ReducedFraction quantizeValue(const ReducedFraction& value,
-                              const ReducedFraction& quant)
+                              const ReducedFraction& step)
 {
-    const auto valueReduced = value.reduced();
-    const auto rasterReduced = quant.reduced();
-    int valNum = valueReduced.numerator() * rasterReduced.denominator();
-    const int rastNum = rasterReduced.numerator() * valueReduced.denominator();
-    const int commonDen = valueReduced.denominator() * rasterReduced.denominator();
-    valNum = ((valNum + rastNum / 2) / rastNum) * rastNum;
-    return ReducedFraction(valNum, commonDen).reduced();
+    const ReducedFraction valueReduced = value.reduced();
+    const ReducedFraction stepReduced = step.reduced();
+
+    const int valNum = valueReduced.numerator() * stepReduced.denominator();
+    const int stepNum = stepReduced.numerator() * valueReduced.denominator();
+    const int commonDen = valueReduced.denominator() * stepReduced.denominator();
+
+    const int quantIndex = (valNum + stepNum / 2) / stepNum;
+    const int quantizedValNum = quantIndex * stepNum;
+
+    return ReducedFraction(quantizedValNum, commonDen).reduced();
 }
 
 ReducedFraction quantForLen(const ReducedFraction& noteLen,
@@ -396,89 +402,86 @@ ReducedFraction findQuantForRange(
 
 //--------------------------------------------------------------------------------------------
 
-bool isHumanPerformance(
-    const std::multimap<ReducedFraction, MidiChord>& chords,
-    const TimeSigMap* sigmap)
+static bool isHumanPerformance(const std::multimap<ReducedFraction, MidiChord>& chords, const TimeSigMap* sigmap)
 {
     if (chords.empty()) {
         return false;
     }
 
-    const auto basicQuant = ReducedFraction::fromTicks(Constants::DIVISION) / 4;      // 1/16
+    const ReducedFraction basicQuant{ TDuration{ DurationType::V_16TH }.fraction() };
     int matches = 0;
     int count = 0;
 
     std::set<ReducedFraction> usedOnTimes;
 
-    for (const auto& chord: chords) {
-        const auto quant = qMin(basicQuant,
-                                quantForLen(MChord::maxNoteLen(chord), basicQuant));
-        const auto onTime = quantizeValue(chord.first, quant);
+    for (const auto& [onTime, chord] : chords) {
+        const ReducedFraction quant = std::min(basicQuant, quantForLen(MChord::maxNoteLen(onTime, chord), basicQuant));
+        const ReducedFraction quantizedOnTime = quantizeValue(onTime, quant);
         int barIndex, beat, tick;
-        sigmap->tickValues(onTime.ticks(), &barIndex, &beat, &tick);
+        sigmap->tickValues(quantizedOnTime.ticks(), &barIndex, &beat, &tick);
 
         const auto barStart = ReducedFraction::fromTicks(sigmap->bar2tick(barIndex, 0));
         const auto barFraction = ReducedFraction(sigmap->timesig(barStart.ticks()).timesig());
-        const auto beatLen = Meter::beatLength(barFraction);
+        const ReducedFraction beatLen = Meter::beatLength(barFraction);
 
-        if (((onTime - barStart) / beatLen).reduced().denominator() == 1
-            && usedOnTimes.find(onTime) == usedOnTimes.end()) {
-            usedOnTimes.insert(onTime);
+        if (((quantizedOnTime - barStart) / beatLen).reduced().denominator() == 1
+            && usedOnTimes.find(quantizedOnTime) == usedOnTimes.end()) {
+            usedOnTimes.insert(quantizedOnTime);
             ++count;
-            const auto diff = (onTime - chord.first).absValue();
+            const auto diff = (quantizedOnTime - onTime).absValue();
             if (diff < MChord::minAllowedDuration()) {
                 ++matches;
             }
         }
     }
 
-    const double TOL = 0.6;
+    constexpr double TOL = 0.6;
     const double matched = matches * 1.0 / count;
 
     return matched < TOL;
 }
 
-std::multimap<int, MTrack>
-getTrackWithAllChords(const std::multimap<int, MTrack>& tracks)
+static MTrack getTrackWithAllChords(const std::multimap<int, MTrack>& tracks)
 {
-    std::multimap<int, MTrack> singleTrack{ { 0, MTrack() } };
-    auto& allChords = singleTrack.begin()->second.chords;
-    for (const auto& track: tracks) {
-        const MTrack& t = track.second;
-        for (const auto& chord: t.chords) {
+    MTrack singleTrack{};
+    std::multimap<ReducedFraction, MidiChord>& allChords = singleTrack.chords;
+    for (const auto& [idx, track] : tracks) {
+        for (const auto& chord : track.chords) {
             allChords.insert(chord);
         }
     }
+
     return singleTrack;
 }
 
-void setIfHumanPerformance(
-    const std::multimap<int, MTrack>& tracks,
-    TimeSigMap* sigmap)
+void setIfHumanPerformance(const std::multimap<int, MTrack>& tracks, TimeSigMap* sigmap)
 {
-    auto allChordsTrack = getTrackWithAllChords(tracks);
+    MTrack allChordsTrack = getTrackWithAllChords(tracks);
     MChord::collectChords(allChordsTrack, { 2, 1 }, { 1, 2 });
-    const MTrack& track = allChordsTrack.begin()->second;
-    const auto& allChords = track.chords;
+    const std::multimap<ReducedFraction, MidiChord>& allChords = allChordsTrack.chords;
     if (allChords.empty()) {
         return;
     }
+
     const bool isHuman = isHumanPerformance(allChords, sigmap);
+
     auto& opers = midiImportOperations.data()->trackOpers;
     if (opers.isHumanPerformance.canRedefineDefaultLater()) {
         opers.isHumanPerformance.setDefaultValue(isHuman);
     }
 
-    if (isHuman) {
-        if (opers.quantValue.canRedefineDefaultLater()) {
-            opers.quantValue.setDefaultValue(MidiOperations::QuantValue::Q_8);
-        }
-        if (opers.maxVoiceCount.canRedefineDefaultLater()) {
-            opers.maxVoiceCount.setDefaultValue(MidiOperations::VoiceCount::V_2);
-        }
-        const double ticksPerSec = MidiTempo::findBasicTempo(tracks, true) * Constants::DIVISION;
-        MidiBeat::findBeatLocations(allChords, sigmap, ticksPerSec);          // and set time sig
+    if (!isHuman) {
+        return;
     }
+
+    if (opers.quantValue.canRedefineDefaultLater()) {
+        opers.quantValue.setDefaultValue(MidiOperations::QuantValue::Q_8);
+    }
+    if (opers.maxVoiceCount.canRedefineDefaultLater()) {
+        opers.maxVoiceCount.setDefaultValue(MidiOperations::VoiceCount::V_2);
+    }
+    const double ticksPerSec = MidiTempo::findBasicTempo(tracks, true) * Constants::DIVISION;
+    MidiBeat::findBeatLocations(allChords, sigmap, ticksPerSec);              // and set time sig
 }
 
 //--------------------------------------------------------------------------------------------
