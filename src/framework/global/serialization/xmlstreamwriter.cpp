@@ -26,6 +26,8 @@
 #include <global/thirdparty/utfcpp/utf8.h>
 
 #include "global/containers.h"
+#include "global/stringutils.h"
+
 #include "textstream.h"
 
 #include "global/log.h"
@@ -37,6 +39,9 @@ struct XmlStreamWriter::Impl {
     std::list<std::string> stack;
     TextStream stream;
 
+    explicit Impl(io::IODevice* const dev)
+        : stream{dev} {}
+
     void putLevel()
     {
         size_t level = stack.size();
@@ -46,26 +51,13 @@ struct XmlStreamWriter::Impl {
     }
 };
 
-XmlStreamWriter::XmlStreamWriter()
-{
-    m_impl = new Impl();
-}
-
 XmlStreamWriter::XmlStreamWriter(io::IODevice* dev)
-{
-    m_impl = new Impl();
-    m_impl->stream.setDevice(dev);
-}
+    : m_impl{new Impl(dev)} {}
 
 XmlStreamWriter::~XmlStreamWriter()
 {
     flush();
     delete m_impl;
-}
-
-void XmlStreamWriter::setDevice(io::IODevice* dev)
-{
-    m_impl->stream.setDevice(dev);
 }
 
 void XmlStreamWriter::flush()
@@ -80,7 +72,7 @@ void XmlStreamWriter::startDocument()
 
 void XmlStreamWriter::writeDoctype(const String& type)
 {
-    m_impl->stream << "<!DOCTYPE " << type << '>' << '\n';
+    m_impl->stream << "<!DOCTYPE " << type.toStdString() << '>' << '\n';
 }
 
 std::string XmlStreamWriter::escapeCodePoint(const char32_t c)
@@ -174,7 +166,7 @@ void XmlStreamWriter::startElement(const String& name, const Attributes& attrs)
 void XmlStreamWriter::startElementRaw(const String& name)
 {
     m_impl->putLevel();
-    m_impl->stream << '<' << name << '>' << '\n';
+    m_impl->stream << '<' << name.toStdString() << '>' << '\n';
     m_impl->stack.push_back(name.split(' ')[0].toStdString());
 }
 
@@ -232,31 +224,39 @@ void XmlStreamWriter::element(const AsciiStringView& name, const Attributes& att
 void XmlStreamWriter::elementRaw(const String& nameWithAttributes, const Value& body)
 {
     m_impl->putLevel();
+
+    const std::string nameWithAttributesUtf8 = nameWithAttributes.toStdString();
     if (body.index() == 0) {
-        m_impl->stream << '<' << nameWithAttributes << "/>\n";
-    } else {
-        String ename(String(nameWithAttributes).split(' ')[0]);
-        m_impl->stream << '<' << nameWithAttributes << '>';
-        writeValue(body);
-        m_impl->stream << "</" << ename << '>' << '\n';
+        m_impl->stream << '<' << nameWithAttributesUtf8 << "/>\n";
+        return;
     }
+
+    m_impl->stream << '<' << nameWithAttributesUtf8 << '>';
+    writeValue(body);
+
+    const auto [name, attributes] = strings::splitFirst(nameWithAttributesUtf8, ' ');
+    m_impl->stream << "</" << name << '>' << '\n';
 }
 
 void XmlStreamWriter::elementStringRaw(const String& nameWithAttributes, const String& body)
 {
     m_impl->putLevel();
+
+    const std::string nameWithAttributesUtf8 = nameWithAttributes.toStdString();
     if (body.isEmpty()) {
-        m_impl->stream << '<' << nameWithAttributes << "/>\n";
-    } else {
-        String ename(String(nameWithAttributes).split(' ')[0]);
-        m_impl->stream << '<' << nameWithAttributes << '>';
-        m_impl->stream << body;
-        m_impl->stream << "</" << ename << '>' << '\n';
+        m_impl->stream << '<' << nameWithAttributesUtf8 << "/>\n";
+        return;
     }
+
+    m_impl->stream << '<' << nameWithAttributesUtf8 << '>';
+    m_impl->stream << body.toStdString();
+
+    const auto [name, attributes] = strings::splitFirst(nameWithAttributesUtf8, ' ');
+    m_impl->stream << "</" << name << '>' << '\n';
 }
 
 void XmlStreamWriter::comment(const String& text)
 {
     m_impl->putLevel();
-    m_impl->stream << "<!-- " << text << " -->\n";
+    m_impl->stream << "<!-- " << text.toStdString() << " -->\n";
 }

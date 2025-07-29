@@ -25,14 +25,7 @@
 #include <string_view>
 #include <vector>
 
-#ifndef NO_QT_SUPPORT
-#include <QString>
-#endif
-
 namespace muse {
-class ByteArray;
-class String;
-
 namespace io {
 class IODevice;
 }
@@ -40,32 +33,30 @@ class IODevice;
 class TextStream
 {
 public:
-    TextStream() = default;
-    explicit TextStream(io::IODevice* device);
-    virtual ~TextStream();
+    static constexpr size_t BUFFER_SIZE = 16384;
 
-    void setDevice(io::IODevice* device);
+    explicit TextStream(io::IODevice* device);
+
+    ~TextStream();
+    TextStream(const TextStream&) = delete;
+    TextStream(TextStream&&) = delete;
+    TextStream& operator=(const TextStream&) = delete;
+    TextStream& operator=(TextStream&&) = delete;
 
     void flush();
 
-    TextStream& operator<<(char ch);
+    TextStream& operator<<(char);
+    TextStream& operator<<(std::string_view);
     TextStream& operator<<(int32_t);
     TextStream& operator<<(uint32_t);
-    TextStream& operator<<(double);
     TextStream& operator<<(int64_t);
     TextStream& operator<<(uint64_t);
-    TextStream& operator<<(const char* s);
-    TextStream& operator<<(std::string_view);
-    TextStream& operator<<(const ByteArray& b);
-    TextStream& operator<<(const String& s);
-
-#ifndef NO_QT_SUPPORT
-    TextStream& operator<<(const QString& s);
-#endif
+    TextStream& operator<<(double);
 
 private:
     void write(const char* ch, size_t len);
+
     io::IODevice* m_device = nullptr;
-    std::vector<uint8_t> m_buf;
+    std::vector<char> m_buf;
 };
 }
