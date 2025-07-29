@@ -461,9 +461,9 @@ bool MscWriter::XmlFileWriter::addFileData(const String& fileName, const ByteArr
     }
 
     TextStream& ts = *m_stream;
-    ts << "<file name=\"" << fileName << "\">\n";
+    ts << "<file name=\"" << fileName.toStdString() << "\">\n";
     ts << "<![CDATA[";
-    ts << data;
+    ts << data.viewAsUtf8();
     ts << "]]>\n";
     ts << "</file>\n";
 

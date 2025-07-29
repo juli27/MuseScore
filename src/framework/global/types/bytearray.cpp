@@ -144,6 +144,15 @@ bool ByteArray::empty() const
     return size() == 0;
 }
 
+std::string_view ByteArray::viewAsUtf8() const
+{
+    if (empty()) {
+        return std::string_view{};
+    }
+
+    return std::string_view{ reinterpret_cast<const char*>(constData()), size() };
+}
+
 void ByteArray::reserve(size_t nsize)
 {
     if (nsize + 1 <= m_data->capacity()) {
