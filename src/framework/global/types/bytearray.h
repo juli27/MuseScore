@@ -19,11 +19,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef MUSE_GLOBAL_BYTEARRAY_H
-#define MUSE_GLOBAL_BYTEARRAY_H
+#pragma once
 
 #include <cstdint>
 #include <memory>
+#include <string_view>
 #include <vector>
 
 #ifndef NO_QT_SUPPORT
@@ -55,6 +55,7 @@ public:
     const std::vector<uint8_t>& constVData() const;
     size_t size() const;
     bool empty() const;
+    std::string_view viewAsUtf8() const;
 
     ByteArray& insert(size_t pos, uint8_t b);
     void push_back(uint8_t b);
@@ -109,5 +110,3 @@ private:
     RawData m_raw;
 };
 }
-
-#endif // MUSE_GLOBAL_BYTEARRAY_H

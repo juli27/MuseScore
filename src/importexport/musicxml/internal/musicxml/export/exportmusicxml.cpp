@@ -369,8 +369,8 @@ public:
     muse::Inject<muse::IApplication> application  = { this };
 
 public:
-    ExportMusicXml(Score* s)
-        : muse::Injectable(s->iocContext())
+    ExportMusicXml(Score* s, muse::io::IODevice* dev)
+        : muse::Injectable(s->iocContext()), m_xml(dev)
     {
         m_score = s;
         m_tick = { 0, 1 };
@@ -379,7 +379,7 @@ public:
         m_millimeters = m_score->style().spatium() * m_tenths / (10 * DPMM);
     }
 
-    void write(muse::io::IODevice* dev);
+    void write();
     void credits(XmlWriter& xml);
     void moveToTick(const Fraction& t);
     void moveToTickIfNeed(const Fraction& t);
@@ -8561,7 +8561,7 @@ static std::vector<const Jump*> findJumpElements(const Score* score)
  Write the score to \a dev in MusicXML format.
  */
 
-void ExportMusicXml::write(muse::io::IODevice* dev)
+void ExportMusicXml::write()
 {
     calcDivisions();
 
@@ -8575,7 +8575,6 @@ void ExportMusicXml::write(muse::io::IODevice* dev)
 
     m_jumpElements = findJumpElements(m_score);
 
-    m_xml.setDevice(dev);
     m_xml.startDocument();
     m_xml.writeDoctype(
         u"score-partwise PUBLIC \"-//Recordare//DTD MusicXML 4.0 Partwise//EN\" \"http://www.musicxml.org/dtds/partwise.dtd\"");
@@ -8615,8 +8614,8 @@ bool saveXml(Score* score, IODevice* device)
 {
     muse::io::Buffer buf;
     buf.open(muse::io::IODevice::WriteOnly);
-    ExportMusicXml em(score);
-    em.write(&buf);
+    ExportMusicXml em(score, &buf);
+    em.write();
     device->write(buf.data());
     return true;
 }
@@ -8657,8 +8656,7 @@ static void writeMxlArchive(Score* score, muse::ZipWriter& zip, const String& fi
     muse::io::Buffer cbuf;
     cbuf.open(muse::io::IODevice::ReadWrite);
 
-    XmlWriter xml;
-    xml.setDevice(&cbuf);
+    XmlWriter xml{ &cbuf };
     xml.startDocument();
     xml.startElement("container");
     xml.startElement("rootfiles");
@@ -8672,8 +8670,8 @@ static void writeMxlArchive(Score* score, muse::ZipWriter& zip, const String& fi
 
     muse::io::Buffer dbuf;
     dbuf.open(muse::io::IODevice::ReadWrite);
-    ExportMusicXml em(score);
-    em.write(&dbuf);
+    ExportMusicXml em(score, &dbuf);
+    em.write();
     dbuf.seek(0);
     zip.addFile(filename.toStdString(), dbuf.data());
 }

@@ -24,20 +24,21 @@
 #include <array>
 #include <charconv>
 
+#if !defined(_MSC_VER)
+#include <sstream>
+#endif
+
 #include "global/io/iodevice.h"
-#include "global/types/bytearray.h"
-#include "global/types/string.h"
 
 #include "global/log.h"
 
-using namespace muse;
-
-static constexpr int TEXTSTREAM_BUFFERSIZE = 16384;
-
-TextStream::TextStream(io::IODevice* device)
+namespace muse {
+TextStream::TextStream(io::IODevice* const device)
     : m_device(device)
 {
-    m_buf.reserve(TEXTSTREAM_BUFFERSIZE);
+    DO_ASSERT(m_device && m_device->isWriteable());
+
+    m_buf.reserve(BUFFER_SIZE);
 }
 
 TextStream::~TextStream()
@@ -45,22 +46,28 @@ TextStream::~TextStream()
     flush();
 }
 
-void TextStream::setDevice(io::IODevice* device)
-{
-    m_device = device;
-}
-
 void TextStream::flush()
 {
-    if (m_device && m_device->isOpen()) {
-        m_device->write(m_buf.data(), m_buf.size());
-        m_buf.clear();
+    if (m_buf.empty()) {
+        return;
     }
+
+    const size_t numBytesToWrite = m_buf.size();
+    const size_t numBytesWritten = m_device->write(reinterpret_cast<const uint8_t*>(m_buf.data()), numBytesToWrite);
+    DO_ASSERT(numBytesWritten == numBytesToWrite);
+
+    m_buf.clear();
 }
 
-TextStream& TextStream::operator<<(char ch)
+TextStream& TextStream::operator<<(const char ch)
 {
     write(&ch, 1);
+    return *this;
+}
+
+TextStream& TextStream::operator<<(const std::string_view str)
+{
+    write(str.data(), str.size());
     return *this;
 }
 
@@ -88,31 +95,6 @@ TextStream& TextStream::operator<<(const uint32_t val)
     }
 
     write(buf.data(), static_cast<size_t>(last - buf.data()));
-    return *this;
-}
-
-TextStream& TextStream::operator<<(double val)
-{
-    // macOS: requires macOS 13.3 at runtime
-    // linux: requires at least libstdc++ 11 (we compile with libstdc++ 10) or libc++ 14
-#if (defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 130300) \
-    || (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 160300) \
-    || defined(_MSC_VER) \
-    || (!defined(__APPLE__) && defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 14000) \
-    || (defined(_GLIBCXX_RELEASE) && _GLIBCXX_RELEASE >= 11)
-    std::array<char, 24> buf{};
-    const auto [last, ec] = std::to_chars(buf.data(), buf.data() + buf.size(), val);
-    IF_ASSERT_FAILED(ec == std::errc {}) {
-        return *this;
-    }
-    write(buf.data(), static_cast<size_t>(last - buf.data()));
-#else
-    std::stringstream ss;
-    ss << val;
-    std::string buf = ss.str();
-    write(buf.data(), buf.size());
-#endif
-
     return *this;
 }
 
@@ -144,44 +126,37 @@ TextStream& TextStream::operator<<(const uint64_t val)
     return *this;
 }
 
-TextStream& TextStream::operator<<(const char* s)
+TextStream& TextStream::operator<<(const double val)
 {
-    return operator<<(std::string_view { s });
-}
-
-TextStream& TextStream::operator<<(const std::string_view str)
-{
-    write(str.data(), str.size());
-    return *this;
-}
-
-#ifndef NO_QT_SUPPORT
-TextStream& TextStream::operator<<(const QString& s)
-{
-    QByteArray ba = s.toUtf8();
-    write(ba.constData(), ba.length());
-    return *this;
-}
-
+    // macOS: requires macOS 13.3 at runtime
+    // linux: requires at least libstdc++ 11 (we compile with libstdc++ 10) or libc++ 14
+#if (defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 130300) \
+    || (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 160300) \
+    || defined(_MSC_VER) \
+    || (!defined(__APPLE__) && defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 14000) \
+    || (defined(_GLIBCXX_RELEASE) && _GLIBCXX_RELEASE >= 11)
+    std::array<char, 24> buf{};
+    // emulate std::stringstream's behaviour
+    const auto [last, ec] = std::to_chars(buf.data(), buf.data() + buf.size(), val, std::chars_format::general, 6);
+    IF_ASSERT_FAILED(ec == std::errc {}) {
+        return *this;
+    }
+    write(buf.data(), static_cast<size_t>(last - buf.data()));
+#else
+    std::stringstream ss;
+    ss << val;
+    const std::string buf = ss.str();
+    write(buf.data(), buf.size());
 #endif
 
-TextStream& TextStream::operator<<(const ByteArray& b)
-{
-    write(reinterpret_cast<const char*>(b.constData()), b.size());
     return *this;
 }
 
-TextStream& TextStream::operator<<(const String& s)
+void TextStream::write(const char* ch, const size_t len)
 {
-    ByteArray b = s.toUtf8();
-    write(reinterpret_cast<const char*>(b.constData()), b.size());
-    return *this;
-}
-
-void TextStream::write(const char* ch, size_t len)
-{
-    m_buf.insert(m_buf.end(), reinterpret_cast<const uint8_t*>(ch), reinterpret_cast<const uint8_t*>(ch + len));
-    if (m_device && m_buf.size() > TEXTSTREAM_BUFFERSIZE) {
+    m_buf.insert(m_buf.end(), ch, ch + len);
+    if (m_buf.size() >= BUFFER_SIZE) {
         flush();
     }
 }
+} // namespace muse

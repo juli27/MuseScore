@@ -33,7 +33,6 @@ class TextStream;
 class XmlStreamWriter
 {
 public:
-    XmlStreamWriter();
     explicit XmlStreamWriter(io::IODevice* dev);
     virtual ~XmlStreamWriter();
 
@@ -45,7 +44,6 @@ public:
     using Attribute = std::pair<AsciiStringView, Value>;
     using Attributes = std::vector<Attribute>;
 
-    void setDevice(io::IODevice* dev);
     void flush();
 
     void startDocument();

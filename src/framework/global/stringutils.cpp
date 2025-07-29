@@ -48,6 +48,27 @@ void muse::strings::split(const std::string& str, std::vector<std::string>& out,
     out.push_back(str.substr(previous, current - previous));
 }
 
+muse::strings::SplitString muse::strings::splitFirst(const std::string_view str, const char delim,
+                                                     const std::size_t pos)
+{
+    return splitFirst(str, std::string_view { &delim, 1 }, pos);
+}
+
+muse::strings::SplitString muse::strings::splitFirst(const std::string_view str, const std::string_view delim,
+                                                     const std::size_t pos)
+{
+    const size_t delimPos = str.find(delim, pos);
+    if (delimPos == std::string_view::npos) {
+        return SplitString{ str, std::string_view{} };
+    }
+
+    // delim isn't included in head or tail
+    const std::string_view head = str.substr(pos, delimPos);
+    const std::string_view tail = str.substr(delimPos + delim.size());
+
+    return SplitString{ head, tail };
+}
+
 std::string muse::strings::join(const std::vector<std::string>& strs, const std::string& sep)
 {
     std::string str;
