@@ -21,58 +21,106 @@
  */
 #include "xmlstreamwriter.h"
 
-#include <list>
-
 #include <global/thirdparty/utfcpp/utf8.h>
 
-#include "global/containers.h"
 #include "global/stringutils.h"
-
-#include "textstream.h"
 
 #include "global/log.h"
 
 using namespace std::literals;
-using namespace muse;
 
-struct XmlStreamWriter::Impl {
-    std::list<std::string> stack;
-    TextStream stream;
-
-    explicit Impl(io::IODevice* const dev)
-        : stream{dev} {}
-
-    void putLevel()
-    {
-        size_t level = stack.size();
-        for (size_t i = 0; i < level * 2; ++i) {
-            stream << ' ';
-        }
-    }
-};
-
-XmlStreamWriter::XmlStreamWriter(io::IODevice* dev)
-    : m_impl{new Impl(dev)} {}
+namespace muse {
+XmlStreamWriter::XmlStreamWriter(io::IODevice* const dev)
+    : m_stream{dev} {}
 
 XmlStreamWriter::~XmlStreamWriter()
 {
-    flush();
-    delete m_impl;
+    IF_ASSERT_FAILED_X(m_elementStack.empty(), "missing calls to endElement()") {
+        do {
+            endElement();
+        } while (!m_elementStack.empty());
+    }
 }
 
 void XmlStreamWriter::flush()
 {
-    m_impl->stream.flush();
+    m_stream.flush();
 }
 
 void XmlStreamWriter::startDocument()
 {
-    m_impl->stream << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+    m_stream << R"(<?xml version="1.0" encoding="UTF-8"?>)" "\n"sv;
 }
 
-void XmlStreamWriter::writeDoctype(const String& type)
+void XmlStreamWriter::writeDoctype(const std::string_view type)
 {
-    m_impl->stream << "<!DOCTYPE " << type.toStdString() << '>' << '\n';
+    m_stream << "<!DOCTYPE "sv << type << ">\n"sv;
+}
+
+void XmlStreamWriter::startElement(const std::string_view name, const Attributes& attrs)
+{
+    DO_ASSERT(!name.empty() && !strings::contains(name, ' '));
+
+    writeIndent();
+    m_stream << '<' << name;
+    for (const Attribute& a : attrs) {
+        m_stream << ' ' << a.name << "=\""sv;
+        writeValue(a.value);
+        m_stream << '\"';
+    }
+    m_stream << ">\n"sv;
+
+    m_elementStack.emplace(name);
+}
+
+void XmlStreamWriter::endElement()
+{
+    IF_ASSERT_FAILED(!m_elementStack.empty()) {
+        return;
+    }
+
+    writeIndent();
+    m_stream << "</"sv << m_elementStack.top() << ">\n"sv;
+    m_elementStack.pop();
+
+    // TODO: is this necessary?
+    flush();
+}
+
+void XmlStreamWriter::element(const std::string_view name, const Attributes& attrs)
+{
+    DO_ASSERT(!name.empty() && !strings::contains(name, ' '));
+
+    writeIndent();
+    m_stream << '<' << name;
+    for (const Attribute& a : attrs) {
+        m_stream << ' ' << a.name << "=\""sv;
+        writeValue(a.value);
+        m_stream << '\"';
+    }
+    m_stream << "/>\n"sv;
+}
+
+void XmlStreamWriter::element(const std::string_view name, const Value& body, const Attributes& attrs)
+{
+    DO_ASSERT(!name.empty() && !strings::contains(name, ' '));
+
+    writeIndent();
+    m_stream << '<' << name;
+    for (const Attribute& a : attrs) {
+        m_stream << ' ' << a.name << "=\""sv;
+        writeValue(a.value);
+        m_stream << '\"';
+    }
+    m_stream << '>';
+    writeValue(body);
+    m_stream << "</"sv << name << ">\n"sv;
+}
+
+void XmlStreamWriter::comment(const std::string_view text)
+{
+    writeIndent();
+    m_stream << "<!-- "sv << text << " -->\n"sv;
 }
 
 std::string XmlStreamWriter::escapeCodePoint(const char32_t c)
@@ -107,156 +155,73 @@ std::string XmlStreamWriter::escapeString(const std::string_view str)
     return escaped;
 }
 
+void XmlStreamWriter::startElementRaw(const std::string_view nameWithAttributes)
+{
+    writeIndent();
+    m_stream << '<' << nameWithAttributes << ">\n"sv;
+
+    const auto [name, attributes] = strings::splitFirst(nameWithAttributes, ' ');
+    m_elementStack.emplace(name);
+}
+
+void XmlStreamWriter::elementRaw(std::string_view nameWithAttributes)
+{
+    writeIndent();
+    m_stream << '<' << nameWithAttributes << "/>\n"sv;
+}
+
+void XmlStreamWriter::elementRaw(const std::string_view nameWithAttributes, const Value& body)
+{
+    writeIndent();
+    m_stream << '<' << nameWithAttributes << '>';
+    writeValue(body);
+
+    const auto [name, attributes] = strings::splitFirst(nameWithAttributes, ' ');
+    m_stream << "</" << name << ">\n"sv;
+}
+
+void XmlStreamWriter::elementStringRaw(std::string_view nameWithAttributes, const std::string_view rawBody)
+{
+    if (rawBody.empty()) {
+        elementRaw(nameWithAttributes);
+        return;
+    }
+
+    writeIndent();
+    m_stream << '<' << nameWithAttributes << '>';
+    m_stream << rawBody;
+
+    const auto [name, attributes] = strings::splitFirst(nameWithAttributes, ' ');
+    m_stream << "</" << name << '>' << '\n';
+}
+
 void XmlStreamWriter::writeValue(const Value& v)
 {
-    // std::monostate, int, unsigned int, signed long int, unsigned long int, signed long long, unsigned long long,
-    // double, const char*, AsciiStringView, String
     switch (v.index()) {
-    case 0:
+    case 1: m_stream << std::get<int32_t>(v);
         break;
-    case 1: m_impl->stream << int32_t{ std::get<int>(v) };
+    case 2: m_stream << std::get<uint32_t>(v);
         break;
-    case 2: m_impl->stream << uint32_t{ std::get<unsigned int>(v) };
+    case 3: m_stream << std::get<int64_t>(v);
         break;
-    case 3: m_impl->stream << int64_t{ std::get<signed long int>(v) };
+    case 4: m_stream << std::get<uint64_t>(v);
         break;
-    case 4: m_impl->stream << uint64_t{ std::get<unsigned long int>(v) };
+    case 5: m_stream << std::get<double>(v);
         break;
-    case 5: m_impl->stream << int64_t{ std::get<signed long long>(v) };
-        break;
-    case 6: m_impl->stream << uint64_t{ std::get<unsigned long long>(v) };
-        break;
-    case 7: m_impl->stream << std::get<double>(v);
-        break;
-    case 8: m_impl->stream << escapeString(AsciiStringView(std::get<const char*>(v)));
-        break;
-    case 9: m_impl->stream << escapeString(std::get<AsciiStringView>(v));
-        break;
-    case 10: m_impl->stream << escapeString(std::get<String>(v).toStdString());
+    case 6: m_stream << escapeString(std::get<std::string_view>(v));
         break;
     default:
-        LOGI() << "index: " << v.index();
+        LOGE() << "invalid value index: " << v.index();
         UNREACHABLE;
         break;
     }
 }
 
-void XmlStreamWriter::startElement(const AsciiStringView& name, const Attributes& attrs)
+void XmlStreamWriter::writeIndent()
 {
-    IF_ASSERT_FAILED(!name.contains(' ')) {
+    const size_t level = m_elementStack.size();
+    for (size_t i = 0; i < level; ++i) {
+        m_stream << "  "sv;
     }
-
-    m_impl->putLevel();
-    m_impl->stream << '<' << name;
-    for (const Attribute& a : attrs) {
-        m_impl->stream << ' ' << a.first << '=' << '\"';
-        writeValue(a.second);
-        m_impl->stream << '\"';
-    }
-    m_impl->stream << '>' << '\n';
-    m_impl->stack.push_back(name.ascii());
 }
-
-void XmlStreamWriter::startElement(const String& name, const Attributes& attrs)
-{
-    ByteArray ba = name.toAscii();
-    startElement(AsciiStringView(ba.constChar(), ba.size()), attrs);
-}
-
-void XmlStreamWriter::startElementRaw(const String& name)
-{
-    m_impl->putLevel();
-    m_impl->stream << '<' << name.toStdString() << '>' << '\n';
-    m_impl->stack.push_back(name.split(' ')[0].toStdString());
-}
-
-void XmlStreamWriter::endElement()
-{
-    m_impl->putLevel();
-    m_impl->stream << "</" << muse::takeLast(m_impl->stack) << '>' << '\n';
-    flush();
-}
-
-// <element attr="value" />
-void XmlStreamWriter::element(const AsciiStringView& name, const Attributes& attrs)
-{
-    IF_ASSERT_FAILED(!name.contains(' ')) {
-    }
-
-    m_impl->putLevel();
-    m_impl->stream << '<' << name;
-    for (const Attribute& a : attrs) {
-        m_impl->stream << ' ' << a.first << '=' << '\"';
-        writeValue(a.second);
-        m_impl->stream << '\"';
-    }
-    m_impl->stream << "/>\n";
-}
-
-void XmlStreamWriter::element(const AsciiStringView& name, const Value& body)
-{
-    IF_ASSERT_FAILED(!name.contains(' ')) {
-    }
-
-    m_impl->putLevel();
-    m_impl->stream << '<' << name << '>';
-    writeValue(body);
-    m_impl->stream << "</" << name << '>' << '\n';
-}
-
-void XmlStreamWriter::element(const AsciiStringView& name, const Attributes& attrs, const Value& body)
-{
-    IF_ASSERT_FAILED(!name.contains(' ')) {
-    }
-
-    m_impl->putLevel();
-    m_impl->stream << '<' << name;
-    for (const Attribute& a : attrs) {
-        m_impl->stream << ' ' << a.first << '=' << '\"';
-        writeValue(a.second);
-        m_impl->stream << '\"';
-    }
-    m_impl->stream << ">";
-    writeValue(body);
-    m_impl->stream << "</" << name << '>' << '\n';
-}
-
-void XmlStreamWriter::elementRaw(const String& nameWithAttributes, const Value& body)
-{
-    m_impl->putLevel();
-
-    const std::string nameWithAttributesUtf8 = nameWithAttributes.toStdString();
-    if (body.index() == 0) {
-        m_impl->stream << '<' << nameWithAttributesUtf8 << "/>\n";
-        return;
-    }
-
-    m_impl->stream << '<' << nameWithAttributesUtf8 << '>';
-    writeValue(body);
-
-    const auto [name, attributes] = strings::splitFirst(nameWithAttributesUtf8, ' ');
-    m_impl->stream << "</" << name << '>' << '\n';
-}
-
-void XmlStreamWriter::elementStringRaw(const String& nameWithAttributes, const String& body)
-{
-    m_impl->putLevel();
-
-    const std::string nameWithAttributesUtf8 = nameWithAttributes.toStdString();
-    if (body.isEmpty()) {
-        m_impl->stream << '<' << nameWithAttributesUtf8 << "/>\n";
-        return;
-    }
-
-    m_impl->stream << '<' << nameWithAttributesUtf8 << '>';
-    m_impl->stream << body.toStdString();
-
-    const auto [name, attributes] = strings::splitFirst(nameWithAttributesUtf8, ' ');
-    m_impl->stream << "</" << name << '>' << '\n';
-}
-
-void XmlStreamWriter::comment(const String& text)
-{
-    m_impl->putLevel();
-    m_impl->stream << "<!-- " << text.toStdString() << " -->\n";
-}
+} // namespace muse

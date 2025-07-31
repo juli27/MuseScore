@@ -31,7 +31,6 @@ class EngravingObject;
 class XmlWriter : public muse::XmlStreamWriter
 {
 public:
-    XmlWriter() = default;
     XmlWriter(muse::io::IODevice* dev);
     ~XmlWriter();
 
@@ -47,7 +46,8 @@ public:
     void tag(const AsciiStringView& name, const Value& body);
     void tag(const AsciiStringView& name, const Value& val, const Value& def);
     void tag(const AsciiStringView& name, const Attributes& attrs, const Value& body);
-    void tagRaw(const String& elementWithAttrs, const Value& body = Value());
+    void tagRaw(const String& elementWithAttrs);
+    void tagRaw(const String& elementWithAttrs, const Value& body);
 
     void tagProperty(Pid id, const PropertyValue& data, const PropertyValue& def = PropertyValue());
     void tagProperty(const AsciiStringView&, const PropertyValue& data, const PropertyValue& def = PropertyValue());
@@ -56,8 +56,6 @@ public:
     void tagPoint(const AsciiStringView& name, const PointF& v);
 
     void writeXml(const String&, String s);
-
-    void comment(const String& text);
 
     static String xmlString(const String&);
 

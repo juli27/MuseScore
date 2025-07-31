@@ -541,12 +541,12 @@ void ScoreOrder::write(XmlWriter& xml) const
         return;
     }
 
-    xml.startElement("Order", { { "id", id } });
-    xml.tag("name", name.str);
+    xml.startElement("Order", { { "id", id.toStdString() } });
+    xml.tag("name", name.str.toStdString());
 
     for (const auto& p : instrumentMap) {
-        xml.startElement("instrument", { { "id", p.first } });
-        xml.tag("family", { { "id", p.second.id } }, p.second.name);
+        xml.startElement("instrument", { { "id", p.first.toStdString() } });
+        xml.tag("family", { { "id", p.second.id.toStdString() } }, p.second.name.toStdString());
         xml.endElement();
     }
 
@@ -557,7 +557,7 @@ void ScoreOrder::write(XmlWriter& xml) const
                 xml.endElement();
             }
             if (!sg.section.isEmpty()) {
-                xml.startElement("section", { { "id", sg.section },
+                xml.startElement("section", { { "id", sg.section.toStdString() },
                                      { "brackets", sg.bracket ? "true" : "false" },
                                      { "barLineSpan", sg.barLineSpan ? "true" : "false" },
                                      { "thinBrackets", sg.thinBracket ? "true" : "false" } });
@@ -567,11 +567,11 @@ void ScoreOrder::write(XmlWriter& xml) const
         if (sg.family == SOLOISTS_ID) {
             xml.tag("soloists");
         } else if (sg.notUnsorted) {
-            xml.tag("family", sg.family);
+            xml.tag("family", sg.family.toStdString());
         } else if (sg.unsorted.isEmpty()) {
             xml.tag("unsorted");
         } else {
-            xml.tag("unsorted", { { "group", sg.unsorted } });
+            xml.tag("unsorted", { { "group", sg.unsorted.toStdString() } });
         }
     }
     if (!section.isEmpty()) {

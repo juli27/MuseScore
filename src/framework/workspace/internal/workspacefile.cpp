@@ -165,7 +165,7 @@ void WorkspaceFile::Meta::write(ZipWriter& zip, const std::map<std::string, Val>
     xml.startElement("items");
 
     for (const auto& m : meta) {
-        xml.element("item", { { "name", m.first } }, m.second.toString());
+        xml.element("item", m.second.toString(), { { "name", m.first } });
     }
 
     xml.endElement();

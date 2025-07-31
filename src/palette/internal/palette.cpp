@@ -357,7 +357,7 @@ QByteArray Palette::toMimeData() const
 
 void Palette::write(XmlWriter& xml, bool pasteMode) const
 {
-    xml.startElement("Palette", { { "name", m_name } });
+    xml.startElement("Palette", { { "name", m_name.toStdString() } });
     xml.tag("type", QMetaEnum::fromType<Type>().valueToKey(int(m_type)));
     xml.tag("gridWidth", m_gridSize.width());
     xml.tag("gridHeight", m_gridSize.height());
@@ -505,7 +505,7 @@ bool Palette::writeToFile(const QString& p) const
     xml.endElement();
     foreach (ImageStoreItem* ip, images) {
         QString ipath = QString("Pictures/") + ip->hashName().toQString();
-        xml.tag("file", ipath);
+        xml.tag("file", ipath.toStdString());
     }
     xml.endElement();
     xml.endElement();
