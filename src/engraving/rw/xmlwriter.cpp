@@ -44,7 +44,7 @@ XmlWriter::~XmlWriter()
 
 void XmlWriter::startElementRaw(const String& s)
 {
-    XmlStreamWriter::startElementRaw(s);
+    XmlStreamWriter::startElementRaw(s.toStdString());
 }
 
 void XmlWriter::startElement(const AsciiStringView& name, const Attributes& attrs)
@@ -86,12 +86,17 @@ void XmlWriter::tag(const AsciiStringView& name, const Value& val, const Value& 
 
 void XmlWriter::tag(const AsciiStringView& name, const Attributes& attrs, const Value& body)
 {
-    XmlStreamWriter::element(name, attrs, body);
+    XmlStreamWriter::element(name, body, attrs);
+}
+
+void XmlWriter::tagRaw(const String& elementWithAttrs)
+{
+    XmlStreamWriter::elementRaw(elementWithAttrs.toStdString());
 }
 
 void XmlWriter::tagRaw(const String& elementWithAttrs, const Value& body)
 {
-    XmlStreamWriter::elementRaw(elementWithAttrs, body);
+    XmlStreamWriter::elementRaw(elementWithAttrs.toStdString(), body);
 }
 
 //---------------------------------------------------------
@@ -162,7 +167,7 @@ void XmlWriter::tagProperty(const AsciiStringView& name, P_TYPE type, const Prop
         element(name, data.value<double>());
         break;
     case P_TYPE::STRING:
-        element(name, data.value<String>());
+        element(name, data.value<String>().toStdString());
         break;
     // geometry
     case P_TYPE::POINT: {
@@ -208,11 +213,11 @@ void XmlWriter::tagProperty(const AsciiStringView& name, P_TYPE type, const Prop
         element(name, TConv::toXml(data.value<GlissandoType>()));
     } break;
     case P_TYPE::ALIGN: {
-        element(name, TConv::toXml(data.value<Align>()));
+        element(name, TConv::toXml(data.value<Align>()).toStdString());
     }
     break;
     case P_TYPE::ALIGN_H: {
-        element(name, TConv::toXml(data.value<AlignH>()));
+        element(name, TConv::toXml(data.value<AlignH>()).toStdString());
     }
     break;
     case P_TYPE::PLACEMENT_V: {
@@ -272,7 +277,7 @@ void XmlWriter::tagProperty(const AsciiStringView& name, P_TYPE type, const Prop
         element(name, TConv::toXml(data.value<LineType>()));
     } break;
     case P_TYPE::HOOK_TYPE: {
-        element(name, TConv::toXml(data.value<HookType>()));
+        element(name, TConv::toXml(data.value<HookType>()).toStdString());
     } break;
     case P_TYPE::KEY_MODE: {
         element(name, TConv::toXml(data.value<KeyMode>()));
@@ -284,7 +289,7 @@ void XmlWriter::tagProperty(const AsciiStringView& name, P_TYPE type, const Prop
         element(name, TConv::toXml(data.value<ChangeMethod>()));
     } break;
     case P_TYPE::ACCIDENTAL_ROLE: {
-        element(name, TConv::toXml(data.value<AccidentalRole>()));
+        element(name, TConv::toXml(data.value<AccidentalRole>()).toStdString());
     } break;
     case P_TYPE::PLAYTECH_TYPE: {
         element(name, TConv::toXml(data.value<PlayingTechniqueType>()));
@@ -293,7 +298,7 @@ void XmlWriter::tagProperty(const AsciiStringView& name, P_TYPE type, const Prop
         element(name, TConv::toXml(data.value<GradualTempoChangeType>()));
     } break;
     case P_TYPE::ORNAMENT_INTERVAL: {
-        element(name, TConv::toXml(data.value<OrnamentInterval>()));
+        element(name, TConv::toXml(data.value<OrnamentInterval>()).toStdString());
     } break;
     case P_TYPE::TIE_PLACEMENT: {
         element(name, TConv::toXml(data.value<TiePlacement>()));
@@ -308,7 +313,7 @@ void XmlWriter::tagProperty(const AsciiStringView& name, P_TYPE type, const Prop
         element(name, TConv::toXml(data.value<AutoCustomHide>()));
     } break;
     case P_TYPE::INT_VEC: {
-        element(name, TConv::toXml(data.value<std::vector<int> >()));
+        element(name, TConv::toXml(data.value<std::vector<int> >()).toStdString());
     } break;
     case P_TYPE::PARTIAL_SPANNER_DIRECTION: {
         element(name, TConv::toXml(data.value<PartialSpannerDirection>()));
@@ -334,7 +339,7 @@ void XmlWriter::tagFraction(const AsciiStringView& name, const Fraction& v, cons
         return;
     }
 
-    element(name, v.toString());
+    element(name, v.toString().toStdString());
 }
 
 void XmlWriter::writeXml(const String& name, String s)
@@ -346,12 +351,7 @@ void XmlWriter::writeXml(const String& name, String s)
         }
     }
 
-    elementStringRaw(name, s);
-}
-
-void XmlWriter::comment(const String& text)
-{
-    XmlStreamWriter::comment(text);
+    elementStringRaw(name.toStdString(), s.toStdString());
 }
 
 String XmlWriter::xmlString(const String& s)

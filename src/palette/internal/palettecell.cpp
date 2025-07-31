@@ -273,7 +273,7 @@ void PaletteCell::write(XmlWriter& xml, bool pasteMode) const
     // for pre-3.3 version compatibility
     XmlWriter::Attributes cellAttrs;
     if (!name.isEmpty()) {
-        cellAttrs.push_back({ "name", name });
+        cellAttrs.push_back({ "name", name.toStdString() });
     }
     if (custom) {
         cellAttrs.push_back({ "custom", "1" });
@@ -298,7 +298,7 @@ void PaletteCell::write(XmlWriter& xml, bool pasteMode) const
         xml.tag("yoffset", yoffset);
     }
     if (!tag.isEmpty()) {
-        xml.tag("tag", tag);
+        xml.tag("tag", tag.toStdString());
     }
     if (!RealIsEqual(mag, 1.0)) {
         xml.tag("mag", mag);

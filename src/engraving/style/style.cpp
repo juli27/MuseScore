@@ -717,9 +717,9 @@ void MStyle::save(XmlWriter& xml, bool optimize)
             if (optimize && a == st.defaultValue().value<Align>()) {
                 continue;
             }
-            xml.tag(st.name(), TConv::toXml(a));
+            xml.tag(st.name(), TConv::toXml(a).toStdString());
         } else if (P_TYPE::ALIGN_H == type) {
-            xml.tag(st.name(), TConv::toXml(value(idx).value<AlignH>()));
+            xml.tag(st.name(), TConv::toXml(value(idx).value<AlignH>()).toStdString());
         } else if (P_TYPE::LINE_TYPE == type) {
             xml.tagProperty(st.name(), value(idx));
         } else if (P_TYPE::TIE_PLACEMENT == type) {

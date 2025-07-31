@@ -28,12 +28,10 @@
 
 #include "global/io/path.h"
 
-//! NOTE This is class is deprecated, please use serialization/xmlstreamwriter.h or serialization/xmldom.h
-
 class QXmlStreamWriter;
 
 namespace muse::deprecated {
-class XmlWriter
+class [[deprecated("please use XmlStreamWriter or serialization/xmldom.h")]] XmlWriter
 {
 public:
     XmlWriter(const io::path_t& path);

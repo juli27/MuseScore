@@ -288,20 +288,20 @@ bool InstrumentTemplate::isValid() const
 
 void InstrumentTemplate::write(XmlWriter& xml) const
 {
-    xml.startElement("Instrument",  { { "id", id } });
+    xml.startElement("Instrument",  { { "id", id.toStdString() } });
 
     if (!soundId.empty()) {
-        xml.tag("soundId", soundId);
+        xml.tag("soundId", soundId.toStdString());
     }
 
     write::TWrite::write(&longNames, xml, "longName");
     write::TWrite::write(&shortNames, xml, "shortName");
 
     if (longNames.size() > 1) {
-        xml.tag("trackName", trackName);
+        xml.tag("trackName", trackName.toStdString());
     }
-    xml.tag("description", description);
-    xml.tag("musicXMLid", musicXmlId);
+    xml.tag("description", description.toStdString());
+    xml.tag("musicXMLid", musicXmlId.toStdString());
     if (extended) {
         xml.tag("extended", extended);
     }
@@ -363,10 +363,10 @@ void InstrumentTemplate::write(XmlWriter& xml) const
         }
     }
     if (minPitchA != 0 || maxPitchA != 127) {
-        xml.tag("aPitchRange", String(u"%1-%2").arg(int(minPitchA)).arg(int(maxPitchA)));
+        xml.tag("aPitchRange", String(u"%1-%2").arg(int(minPitchA)).arg(int(maxPitchA)).toStdString());
     }
     if (minPitchP != 0 || maxPitchP != 127) {
-        xml.tag("pPitchRange", String(u"%1-%2").arg(int(minPitchP)).arg(int(maxPitchP)));
+        xml.tag("pPitchRange", String(u"%1-%2").arg(int(minPitchP)).arg(int(maxPitchP)).toStdString());
     }
     if (transpose.diatonic) {
         xml.tag("transposeDiatonic", transpose.diatonic);
@@ -404,7 +404,7 @@ void InstrumentTemplate::write(XmlWriter& xml) const
         }
     }
     if (family) {
-        xml.tag("family", family->id);
+        xml.tag("family", family->id.toStdString());
     }
     xml.endElement();
 }
@@ -1016,8 +1016,8 @@ void InstrumentTemplate::linkGenre(const String& genre)
 
 void InstrumentGenre::write(XmlWriter& xml) const
 {
-    xml.startElement("Genre", { { "id", id } });
-    xml.tag("name", name);
+    xml.startElement("Genre", { { "id", id.toStdString() } });
+    xml.tag("name", name.toStdString());
     xml.endElement();
 }
 
@@ -1036,8 +1036,8 @@ void InstrumentGenre::read(XmlReader& e)
 
 void InstrumentFamily::write(XmlWriter& xml) const
 {
-    xml.startElement("Family", { { "id", id } });
-    xml.tag("name", name);
+    xml.startElement("Family", { { "id", id.toStdString() } });
+    xml.tag("name", name.toStdString());
     xml.endElement();
 }
 

@@ -463,7 +463,7 @@ static void writeRenderList(XmlWriter& xml, const std::list<RenderActionPtr>& al
             break;
         }
     }
-    xml.tag(name, s);
+    xml.tag(name, s.toStdString());
 }
 
 //---------------------------------------------------------
@@ -524,7 +524,7 @@ void ChordToken::write(XmlWriter& xml) const
     }
     xml.startElement("token", attrs);
     for (const String& s : names) {
-        xml.tag("name", s);
+        xml.tag("name", s.toStdString());
     }
     writeRenderList(xml, renderList, "render");
     xml.endElement();
@@ -1917,12 +1917,12 @@ void ChordDescription::write(XmlWriter& xml) const
         xml.startElement("chord");
     }
     for (const String& s : names) {
-        xml.tag("name", s);
+        xml.tag("name", s.toStdString());
     }
-    xml.tag("xml", xmlKind);
-    xml.tag("voicing", chord.voicing());
+    xml.tag("xml", xmlKind.toStdString());
+    xml.tag("voicing", chord.voicing().toStdString());
     for (const String& s : xmlDegrees) {
-        xml.tag("degree", s);
+        xml.tag("degree", s.toStdString());
     }
     writeRenderList(xml, renderList, "render");
     xml.endElement();
@@ -2077,16 +2077,17 @@ void ChordList::write(XmlWriter& xml) const
 {
     int fontIdx = 0;
     for (const ChordFont& f : fonts) {
-        xml.startElement("font", { { "id", fontIdx }, { "family", f.family } });
+        xml.startElement("font", { { "id", fontIdx }, { "family", f.family.toStdString() } });
         xml.tag("mag", f.mag);
         for (const auto& p : m_symbols) {
             const ChordSymbol& s = p.second;
             if (s.fontIdx == fontIdx) {
                 if (s.code.isNull()) {
-                    xml.tag("sym", { { "name", s.name }, { "value", s.value } });
+                    xml.tag("sym", { { "name", s.name.toStdString() }, { "value", s.value.toStdString() } });
                 } else {
                     // write hex numbers with a "0x" prefix, so they can convert back properly on read
-                    xml.tag("sym", { { "name", s.name }, { "code", u"0x" + String::number(s.code.unicode(), 16) } });
+                    xml.tag("sym", { { "name", s.name.toStdString() },
+                                { "code", "0x" + String::number(s.code.unicode(), 16).toStdString() } });
                 }
             }
         }

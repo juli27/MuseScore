@@ -51,6 +51,7 @@ set(MODULE_TEST_SRC
     ${CMAKE_CURRENT_LIST_DIR}/xmldom_tests.cpp
     ${CMAKE_CURRENT_LIST_DIR}/xmlstreamreader_tests.cpp
     ${CMAKE_CURRENT_LIST_DIR}/serialization/textstream_tests.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/serialization/xmlstreamwriter_tests.cpp
 )
 
 include(SetupGTest)

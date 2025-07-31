@@ -30,6 +30,9 @@
 #include "types/string.h"
 
 namespace muse::strings {
+bool contains(std::string_view, char);
+bool contains(std::string_view haystack, std::string_view needle);
+
 bool replace(std::string& source, const std::string& what, const std::string& to);
 
 void split(const std::string& str, std::vector<std::string>& out, const std::string& delim);

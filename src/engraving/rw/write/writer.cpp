@@ -59,8 +59,8 @@ bool Writer::writeScore(Score* score, io::IODevice* device, bool onlySelection, 
     xml.startElement("museScore", { { "version", Constants::MSC_VERSION_STR } });
 
     if (!MScore::testMode) {
-        xml.tag("programVersion", application()->version().toString());
-        xml.tag("programRevision", application()->revision());
+        xml.tag("programVersion", application()->version().toStdString());
+        xml.tag("programRevision", application()->revision().toStdString());
     }
 
     compat::WriteScoreHook hook;
@@ -117,7 +117,7 @@ void Writer::write(Score* score, XmlWriter& xml, WriteContext& ctx, bool selecti
 
     if (Excerpt* e = score->excerpt()) {
         if (!e->name().empty()) {
-            xml.tag("name", e->name());
+            xml.tag("name", e->name().toStdString());
         }
 
         const TracksMap& tracks = e->tracksMapping();
@@ -173,7 +173,7 @@ void Writer::write(Score* score, XmlWriter& xml, WriteContext& ctx, bool selecti
     for (const auto& t : score->m_metaTags) {
         // do not output "platform" and "creationDate" in test and save template mode
         if ((!MScore::testMode && !MScore::saveTemplateMode) || (t.first != "platform" && t.first != "creationDate")) {
-            xml.tag("metaTag", { { "name", t.first.toXmlEscaped() } }, t.second);
+            xml.tag("metaTag", { { "name", t.first.toXmlEscaped().toStdString() } }, t.second.toStdString());
         }
     }
 

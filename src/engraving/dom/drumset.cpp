@@ -116,10 +116,10 @@ void Drumset::save(XmlWriter& xml) const
         }
         xml.tag("line", line(i));
         xml.tag("voice", voice(i));
-        xml.tag("name", name(i));
+        xml.tag("name", name(i).toStdString());
         xml.tag("stem", int(stemDirection(i)));
         if (!shortcut(i).empty()) {
-            xml.tag("shortcut", shortcut(i));
+            xml.tag("shortcut", shortcut(i).toStdString());
         }
         std::list<DrumInstrumentVariant> vs = variants(i);
         if (!vs.empty()) {
@@ -127,7 +127,7 @@ void Drumset::save(XmlWriter& xml) const
             for (const auto& v : vs) {
                 xml.startElement("variant", { { "pitch", v.pitch } });
                 if (!v.articulationName.empty()) {
-                    xml.tag("articulation", v.articulationName);
+                    xml.tag("articulation", v.articulationName.toStdString());
                 }
                 if (v.tremolo != TremoloType::INVALID_TREMOLO) {
                     xml.tag("tremolo", TConv::toXml(v.tremolo));

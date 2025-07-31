@@ -557,7 +557,7 @@ void TWrite::write(const ActionIcon* item, XmlWriter& xml, WriteContext&)
 {
     xml.startElement(item);
     xml.tag("subtype", int(item->actionType()));
-    xml.tag("action", String::fromStdString(item->actionCode()));
+    xml.tag("action", item->actionCode());
     xml.endElement();
 }
 
@@ -626,7 +626,7 @@ void TWrite::write(const Articulation* item, XmlWriter& xml, WriteContext& ctx)
 void TWrite::writeProperties(const Articulation* item, XmlWriter& xml, WriteContext& ctx)
 {
     if (!item->channelName().isEmpty()) {
-        xml.tag("channe", { { "name", item->channelName() } });
+        xml.tag("channe", { { "name", item->channelName().toStdString() } });
     }
 
     writeProperty(item, xml, Pid::DIRECTION);
@@ -674,14 +674,14 @@ void TWrite::write(const Ornament* item, XmlWriter& xml, WriteContext& ctx)
 void TWrite::write(const Audio* item, XmlWriter& xml, WriteContext&)
 {
     xml.startElement("Audio");
-    xml.tag("path", item->path());
+    xml.tag("path", item->path().toStdString());
     xml.endElement();
 }
 
 void TWrite::write(const BagpipeEmbellishment* item, XmlWriter& xml, WriteContext&)
 {
     xml.startElement(item);
-    xml.tag("subtype", TConv::toXml(item->embelType()));
+    xml.tag("subtype", TConv::toXml(item->embelType()).toStdString());
     xml.endElement();
 }
 
@@ -1401,14 +1401,14 @@ void TWrite::write(const FretDiagram* item, XmlWriter& xml, WriteContext& ctx)
 
             // Write marker
             if (m.exists()) {
-                xml.tag("marker", FretItem::markerTypeToName(m.mtype));
+                xml.tag("marker", FretItem::markerTypeToName(m.mtype).toStdString());
             }
 
             // Write any dots
             for (auto const& d : allDots) {
                 if (d.exists()) {
                     // TODO: write fingering
-                    xml.tag("dot", { { "fret", d.fret } }, FretItem::dotTypeToName(d.dtype));
+                    xml.tag("dot", { { "fret", d.fret } }, FretItem::dotTypeToName(d.dtype).toStdString());
                 }
             }
 
@@ -1757,7 +1757,7 @@ static void writeHarmonyInfo(const HarmonyInfo* item, const Harmony* h, XmlWrite
             writeName = u"=" + writeName;
         }
         if (!writeName.isEmpty()) {
-            xml.tag("name", writeName);
+            xml.tag("name", writeName.toStdString());
         }
         if (rRootTpc != Tpc::TPC_INVALID) {
             xml.tag("root", rRootTpc);
@@ -1766,7 +1766,7 @@ static void writeHarmonyInfo(const HarmonyInfo* item, const Harmony* h, XmlWrite
             xml.tag("bass", rBassTpc);
         }
     } else {
-        xml.tag("name", item->textName());
+        xml.tag("name", item->textName().toStdString());
     }
 
     xml.endElement();
@@ -1923,8 +1923,8 @@ void TWrite::write(const Image* item, XmlWriter& xml, WriteContext& ctx)
     writeProperties(static_cast<const BSymbol*>(item), xml, ctx);
     // keep old "path" tag, for backward compatibility and because it is used elsewhere
     // (for instance by Box:read(), Measure:read(), Note:read(), ...)
-    xml.tag("path", item->storeItem() ? item->storeItem()->hashName() : relativeFilePath);
-    xml.tag("linkPath", relativeFilePath);
+    xml.tag("path", item->storeItem() ? item->storeItem()->hashName().toStdString() : relativeFilePath.toStdString());
+    xml.tag("linkPath", relativeFilePath.toStdString());
 
     writeProperty(item, xml, Pid::AUTOSCALE);
     writeProperty(item, xml, Pid::SIZE);
@@ -1939,17 +1939,17 @@ void TWrite::write(const Instrument* item, XmlWriter& xml, WriteContext&, const 
     if (item->id().isEmpty()) {
         xml.startElement("Instrument");
     } else {
-        xml.startElement("Instrument", { { "id", item->id() } });
+        xml.startElement("Instrument", { { "id", item->id().toStdString() } });
     }
 
     if (!item->soundId().empty()) {
-        xml.tag("soundId", item->soundId());
+        xml.tag("soundId", item->soundId().toStdString());
     }
 
     write(&item->longNames(), xml, "longName");
     write(&item->shortNames(), xml, "shortName");
 //      if (!_trackName.empty())
-    xml.tag("trackName", item->trackName());
+    xml.tag("trackName", item->trackName().toStdString());
     if (item->minPitchP() > 0) {
         xml.tag("minPitchP", item->minPitchP());
     }
@@ -1969,7 +1969,7 @@ void TWrite::write(const Instrument* item, XmlWriter& xml, WriteContext&, const 
         xml.tag("transposeChromatic", item->transpose().chromatic);
     }
     if (!item->musicXmlId().isEmpty()) {
-        xml.tag("instrumentId", item->musicXmlId());
+        xml.tag("instrumentId", item->musicXmlId().toStdString());
     }
     if (item->useDrumset()) {
         xml.tag("useDrumset", item->useDrumset());
@@ -2052,7 +2052,7 @@ void TWrite::write(const InstrChannel* item, XmlWriter& xml, const Part* part)
     if (item->name().isEmpty() || item->name() == InstrChannel::DEFAULT_NAME) {
         xml.startElement("Channel");
     } else {
-        xml.startElement("Channel", { { "name", item->name() } });
+        xml.startElement("Channel", { { "name", item->name().toStdString() } });
     }
     if (item->color() != InstrChannel::DEFAULT_COLOR) {
         xml.tag("color", item->color());
@@ -2088,7 +2088,7 @@ void TWrite::write(const InstrChannel* item, XmlWriter& xml, const Part* part)
     }
     if (!MScore::testMode) {
         // xml.tag("synti", ::synti->name(synti));
-        xml.tag("synti", item->synti());
+        xml.tag("synti", item->synti().toStdString());
     }
 
     if (part && part->masterScore()->exportMidiMapping() && part->score() == part->masterScore()) {
@@ -2109,10 +2109,10 @@ void TWrite::write(const MidiArticulation* item, XmlWriter& xml)
     if (item->name.isEmpty()) {
         xml.startElement("Articulation");
     } else {
-        xml.startElement("Articulation", { { "name", item->name } });
+        xml.startElement("Articulation", { { "name", item->name.toStdString() } });
     }
     if (!item->descr.isEmpty()) {
-        xml.tag("descr", item->descr);
+        xml.tag("descr", item->descr.toStdString());
     }
     xml.tag("velocity", item->velocity);
     xml.tag("gateTime", item->gateTime);
@@ -2139,9 +2139,9 @@ void TWrite::write(const StaffNameList* item, XmlWriter& xml, const char* name)
 
 void TWrite::write(const NamedEventList* item, XmlWriter& xml, const AsciiStringView& n)
 {
-    xml.startElement(n, { { "name", item->name } });
+    xml.startElement(n, { { "name", item->name.toStdString() } });
     if (!item->descr.empty()) {
-        xml.tag("descr", item->descr);
+        xml.tag("descr", item->descr.toStdString());
     }
     for (const MidiCoreEvent& e : item->events) {
         midi_event_write(e, xml);
@@ -2164,9 +2164,9 @@ void TWrite::write(const Jump* item, XmlWriter& xml, WriteContext& ctx)
 {
     xml.startElement(item);
     writeProperties(static_cast<const TextBase*>(item), xml, ctx, true);
-    xml.tag("jumpTo", item->jumpTo());
-    xml.tag("playUntil", item->playUntil());
-    xml.tag("continueAt", item->continueAt());
+    xml.tag("jumpTo", item->jumpTo().toStdString());
+    xml.tag("playUntil", item->playUntil().toStdString());
+    xml.tag("continueAt", item->continueAt().toStdString());
     writeProperty(item, xml, Pid::PLAY_REPEATS);
     xml.endElement();
 }
@@ -2291,7 +2291,7 @@ void TWrite::write(const Marker* item, XmlWriter& xml, WriteContext& ctx)
 {
     xml.startElement(item);
     writeProperties(static_cast<const TextBase*>(item), xml, ctx, true);
-    xml.tag("label", item->label());
+    xml.tag("label", item->label().toStdString());
     writeProperty(item, xml, Pid::MARKER_CENTER_ON_SYMBOL);
     writeProperty(item, xml, Pid::MARKER_SYMBOL_SIZE);
     xml.endElement();
@@ -2506,7 +2506,7 @@ void TWrite::write(const Part* item, XmlWriter& xml, WriteContext& ctx)
         xml.tag("soloist", item->soloist());
     }
 
-    xml.tag("trackName", item->partName());
+    xml.tag("trackName", item->partName().toStdString());
 
     if (item->color() != Part::DEFAULT_COLOR) {
         xml.tag("color", item->color());
@@ -2857,12 +2857,12 @@ void TWrite::writeProperties(const StaffTextBase* item, XmlWriter& xml, WriteCon
     for (const ChannelActions& s : item->channelActions()) {
         int channel = s.channel;
         for (const String& name : s.midiActionNames) {
-            xml.tag("MidiAction", { { "channel", channel }, { "name", name } });
+            xml.tag("MidiAction", { { "channel", channel }, { "name", name.toStdString() } });
         }
     }
     for (voice_idx_t voice = 0; voice < VOICES; ++voice) {
         if (!item->channelName(voice).isEmpty()) {
-            xml.tag("channelSwitch", { { "voice", voice }, { "name", item->channelName(voice) } });
+            xml.tag("channelSwitch", { { "voice", voice }, { "name", item->channelName(voice).toStdString() } });
         }
     }
     if (item->setAeolusStops()) {
@@ -2890,7 +2890,7 @@ void TWrite::write(const StaffType* item, XmlWriter& xml, WriteContext& ctx)
 {
     xml.startElement("StaffType", { { "group", TConv::toXml(item->group()) } });
     if (!item->xmlName().isEmpty()) {
-        xml.tag("name", item->xmlName());
+        xml.tag("name", item->xmlName().toStdString());
     }
     if (item->lines() != 5) {
         xml.tag("lines", item->lines());
@@ -2940,7 +2940,7 @@ void TWrite::write(const StaffType* item, XmlWriter& xml, WriteContext& ctx)
         }
     } else {
         xml.tag("durations",        item->genDurations());
-        xml.tag("durationFontName", item->durationFontName());     // write font names anyway for backward compatibility
+        xml.tag("durationFontName", item->durationFontName().toStdString());     // write font names anyway for backward compatibility
         xml.tag("durationFontSize", item->durationFontSize());
         xml.tag("durationFontY",    item->durationFontUserY());
         if (item->symRepeat() != TablatureSymbolRepeat::NEVER) {
@@ -3034,7 +3034,7 @@ void TWrite::write(const StringTunings* item, XmlWriter& xml, WriteContext& ctx)
 
     writeProperty(item, xml, Pid::STRINGTUNINGS_PRESET);
 
-    xml.tag("visibleStrings", TConv::toXml(item->visibleStrings()));
+    xml.tag("visibleStrings", TConv::toXml(item->visibleStrings()).toStdString());
 
     if (!item->stringData()->isNull()) {
         write(item->stringData(), xml);
@@ -3060,7 +3060,7 @@ void TWrite::write(const Symbol* item, XmlWriter& xml, WriteContext& ctx)
 void TWrite::write(const FSymbol* item, XmlWriter& xml, WriteContext& ctx)
 {
     xml.startElement(item);
-    xml.tag("font",     item->font().family().id());
+    xml.tag("font",     item->font().family().id().toStdString());
     xml.tag("fontsize", item->font().pointSizeF());
     xml.tag("code",     item->code());
     writeProperties(static_cast<const BSymbol*>(item), xml, ctx);
@@ -3102,11 +3102,11 @@ void TWrite::write(const SoundFlag* item, XmlWriter& xml, WriteContext&)
     writeProperty(item, xml, Pid::PLAY);
 
     if (!item->soundPresets().empty()) {
-        xml.tag("presets", item->soundPresets().join(u","));
+        xml.tag("presets", item->soundPresets().join(u",").toStdString());
     }
 
     if (!item->playingTechnique().empty()) {
-        xml.tag("playingTechnique", item->playingTechnique());
+        xml.tag("playingTechnique", item->playingTechnique().toStdString());
     }
 
     writeProperty(item, xml, Pid::APPLY_TO_ALL_STAVES);
@@ -3145,7 +3145,7 @@ void TWrite::write(const TempoText* item, XmlWriter& xml, WriteContext& ctx)
 {
     xml.startElement(item);
     writeProperty(item, xml, Pid::PLAY);
-    xml.tag("tempo", TConv::toXml(item->tempo()));
+    xml.tag("tempo", TConv::toXml(item->tempo()).toStdString());
     if (item->followText()) {
         xml.tag("followText", item->followText());
     }
@@ -3344,7 +3344,7 @@ void TWrite::write(const Volta* item, XmlWriter& xml, WriteContext& ctx)
 {
     xml.startElement(item);
     writeProperties(static_cast<const TextLineBase*>(item), xml, ctx);
-    xml.tag("endings", TConv::toXml(item->endings()));
+    xml.tag("endings", TConv::toXml(item->endings()).toStdString());
     xml.endElement();
 }
 

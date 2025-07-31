@@ -1088,8 +1088,8 @@ muse::ByteArray Selection::staffMimeData() const
     int staves = static_cast<int>(staffEnd() - staffStart());
 
     xml.startElement("StaffList", { { "version", (MScore::testMode ? "2.00" : Constants::MSC_VERSION_STR) },
-                         { "tick", tickStart().toString() },
-                         { "len", ticks.toString() },
+                         { "tick", tickStart().toString().toStdString() },
+                         { "len", ticks.toString().toStdString() },
                          { "staff", staffStart() },
                          { "staves", staves } });
 
