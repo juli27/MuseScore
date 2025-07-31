@@ -21,57 +21,85 @@
  */
 #pragma once
 
+#include <cstdint>
+#include <stack>
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
 
-#include "global/types/string.h"
-#include "global/io/iodevice.h"
+#include "textstream.h"
 
 namespace muse {
-class TextStream;
+namespace io {
+class IODevice;
+}
+
 class XmlStreamWriter
 {
+    struct NoDefConstr {
+        NoDefConstr() = delete;
+
+        bool operator==(const NoDefConstr&) const { return true; }
+        bool operator!=(const NoDefConstr& other) const { return !(*this == other); }
+    };
+
 public:
     explicit XmlStreamWriter(io::IODevice* dev);
+
     virtual ~XmlStreamWriter();
-
     XmlStreamWriter(const XmlStreamWriter&) = delete;
+    XmlStreamWriter(XmlStreamWriter&&) = delete;
     XmlStreamWriter& operator=(const XmlStreamWriter&) = delete;
+    XmlStreamWriter& operator=(XmlStreamWriter&&) = delete;
 
-    using Value = std::variant<std::monostate, int, unsigned int, signed long int, unsigned long int, signed long long, unsigned long long,
-                               double, const char*, AsciiStringView, String>;
-    using Attribute = std::pair<AsciiStringView, Value>;
+    using Value = std::variant<NoDefConstr, int32_t, uint32_t, int64_t, uint64_t, double, std::string_view, std::string>;
+    struct Attribute {
+        std::string_view name;
+        Value value;
+
+        Attribute(const std::string_view n, const Value v)
+            : name{n}, value{v} {}
+    };
+    // TODO(C++20): use std::span
     using Attributes = std::vector<Attribute>;
 
     void flush();
 
     void startDocument();
-    void writeDoctype(const String& type);
+    void writeDoctype(std::string_view type);
 
-    void startElement(const AsciiStringView& name, const Attributes& attrs = {});
-    void startElement(const String& name, const Attributes& attrs = {});
+    void startElement(std::string_view name, const Attributes& attrs = {});
     void endElement();
 
-    void element(const AsciiStringView& name, const Attributes& attrs = {});                // <element attr="value" />
-    void element(const AsciiStringView& name, const Value& body);                           // <element>body</element>
-    void element(const AsciiStringView& name, const Attributes& attrs, const Value& body);  // <element attr="value" >body</element>
+    // <name attr="value"/>
+    void element(std::string_view name, const Attributes& attrs = {});
 
-    void comment(const String& text);
+    // <name attr="value">body</name>
+    void element(std::string_view name, const Value& body, const Attributes& attrs = {});
+
+    void comment(std::string_view);
 
     static std::string escapeCodePoint(char32_t);
     static std::string escapeString(std::string_view);
 
 protected:
-    void startElementRaw(const String& name);
-    void elementRaw(const String& nameWithAttributes, const Value& body);
-    void elementStringRaw(const String& nameWithAttributes, const String& body);
+    [[deprecated("please use startElement(name, attr)")]]
+    void startElementRaw(std::string_view nameWithAttributes);
+    [[deprecated("please use element(name, attrs)")]]
+    void elementRaw(std::string_view nameWithAttributes);
+    [[deprecated("please use element(name, body, attrs)")]]
+    void elementRaw(std::string_view nameWithAttributes, const Value& body);
+    // TODO: provide a way to serialize a XML DOM tree
+    //[[deprecated]]
+    void elementStringRaw(std::string_view nameWithAttributes, const std::string_view rawBody);
 
 private:
-
     void writeValue(const Value& v);
+    void writeIndent();
 
-    struct Impl;
-    Impl* m_impl = nullptr;
+    using ElementStack = std::stack<std::string, std::vector<std::string>>;
+    ElementStack m_elementStack;
+    TextStream m_stream;
 };
 }

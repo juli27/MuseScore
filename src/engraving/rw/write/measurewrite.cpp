@@ -40,11 +40,11 @@ void MeasureWrite::writeMeasure(const Measure* measure, XmlWriter& xml, WriteCon
 {
     if (MScore::debugMode) {
         const int mno = measure->no() + 1;
-        xml.comment(String(u"Measure %1").arg(mno));
+        xml.comment(String(u"Measure %1").arg(mno).toStdString());
     }
     if (measure->m_len != measure->m_timesig) {
         // this is an irregular measure
-        xml.startElement(measure, { { "len", measure->m_len.toString() } });
+        xml.startElement(measure, { { "len", measure->m_len.toString().toStdString() } });
     } else {
         xml.startElement(measure);
     }

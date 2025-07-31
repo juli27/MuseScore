@@ -21,8 +21,18 @@
  */
 #include "stringutils.h"
 
-#include <cctype>
 #include <algorithm>
+#include <cctype>
+
+bool muse::strings::contains(const std::string_view str,  const char c)
+{
+    return contains(str, std::string_view { &c, 1 });
+}
+
+bool muse::strings::contains(const std::string_view haystack, const std::string_view needle)
+{
+    return haystack.find(needle) != std::string_view::npos;
+}
 
 bool muse::strings::replace(std::string& str, const std::string& from, const std::string& to)
 {

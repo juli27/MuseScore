@@ -225,7 +225,7 @@ void MscWriter::writeContainer(const std::vector<String>& paths)
     xml.startElement("rootfiles");
 
     for (const String& f : paths) {
-        xml.element("rootfile", { { "full-path", f } });
+        xml.element("rootfile", { { "full-path", f.toStdString() } });
     }
 
     xml.endElement();
