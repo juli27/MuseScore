@@ -99,9 +99,9 @@ System* SystemLayout::collectSystem(LayoutContext& ctx)
         measure = measure->findPotentialSectionBreak();
     }
 
-    bool firstSysLongName = ctx.conf().styleV(Sid::firstSystemInstNameVisibility).value<InstrumentLabelVisibility>()
+    bool firstSysLongName = static_cast<InstrumentLabelVisibility>(ctx.conf().styleV(Sid::firstSystemInstNameVisibility).value<int>())
                             == InstrumentLabelVisibility::LONG;
-    bool subsSysLongName = ctx.conf().styleV(Sid::subsSystemInstNameVisibility).value<InstrumentLabelVisibility>()
+    bool subsSysLongName = static_cast<InstrumentLabelVisibility>(ctx.conf().styleV(Sid::subsSystemInstNameVisibility).value<int>())
                            == InstrumentLabelVisibility::LONG;
     if (measure) {
         const LayoutBreak* layoutBreak = measure->sectionBreakElement();
@@ -2584,9 +2584,10 @@ void SystemLayout::setInstrumentNames(System* system, LayoutContext& ctx, bool l
     if (!ctx.conf().isShowInstrumentNames()
         || (ctx.conf().styleB(Sid::hideInstrumentNameIfOneInstrument) && ctx.dom().visiblePartCount() <= 1)
         || (ctx.state().firstSystem()
-            && ctx.conf().styleV(Sid::firstSystemInstNameVisibility).value<InstrumentLabelVisibility>() == InstrumentLabelVisibility::HIDE)
+            && static_cast<InstrumentLabelVisibility>(ctx.conf().styleV(Sid::firstSystemInstNameVisibility).value<int>())
+            == InstrumentLabelVisibility::HIDE)
         || (!ctx.state().firstSystem()
-            && ctx.conf().styleV(Sid::subsSystemInstNameVisibility).value<InstrumentLabelVisibility>()
+            && static_cast<InstrumentLabelVisibility>(ctx.conf().styleV(Sid::subsSystemInstNameVisibility).value<int>())
             == InstrumentLabelVisibility::HIDE)) {
         for (SysStaff* staff : system->staves()) {
             for (InstrumentName* t : staff->instrumentNames) {

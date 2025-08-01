@@ -845,7 +845,7 @@ Font FretDiagram::fretNumFont() const
     const MStyle& st = style();
     Font f(st.styleSt(Sid::fretDiagramFretNumberFontFace), Font::Type::Text);
     f.setPointSizeF(st.styleD(Sid::fretDiagramFretNumberFontSize) * userMag());
-    FontStyle fStyle = st.styleV(Sid::fretDiagramFretNumberFontStyle).value<FontStyle>();
+    FontStyle fStyle = static_cast<FontStyle>(st.styleV(Sid::fretDiagramFretNumberFontStyle).value<int>());
     f.setBold(fStyle & FontStyle::Bold);
     f.setItalic(fStyle & FontStyle::Italic);
     f.setUnderline(fStyle & FontStyle::Underline);
@@ -858,7 +858,7 @@ Font FretDiagram::fingeringFont() const
     const MStyle& st = style();
     Font f(st.styleSt(Sid::fretDiagramFingeringFontFace), Font::Type::Text);
     f.setPointSizeF(st.styleD(Sid::fretDiagramFingeringFontSize) * userMag());
-    FontStyle fStyle = st.styleV(Sid::fretDiagramFingeringFontStyle).value<FontStyle>();
+    FontStyle fStyle = static_cast<FontStyle>(st.styleV(Sid::fretDiagramFingeringFontStyle).value<int>());
     f.setBold(fStyle & FontStyle::Bold);
     f.setItalic(fStyle & FontStyle::Italic);
     f.setUnderline(fStyle & FontStyle::Underline);

@@ -551,11 +551,11 @@ const CharFormat Page::formatForMacro(const String& s) const
 {
     CharFormat format;
     if (s == "$c" || s == "$C") {
-        format.setStyle(style().styleV(Sid::copyrightFontStyle).value<FontStyle>());
+        format.setStyle(static_cast<FontStyle>(style().styleV(Sid::copyrightFontStyle).value<int>()));
         format.setFontSize(style().styleD(Sid::copyrightFontSize));
         format.setFontFamily(style().styleSt(Sid::copyrightFontFace));
     } else if (s == "$p" || s == "$P" || s == "$n" || s == "$N") {
-        format.setStyle(style().styleV(Sid::pageNumberFontStyle).value<FontStyle>());
+        format.setStyle(static_cast<FontStyle>(style().styleV(Sid::pageNumberFontStyle).value<int>()));
         format.setFontSize(style().styleD(Sid::pageNumberFontSize));
         format.setFontFamily(style().styleSt(Sid::pageNumberFontFace));
     }

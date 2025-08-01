@@ -1436,12 +1436,12 @@ bool Note::shouldHideFret() const
         return true;
     }
 
-    ShowTiedFret showTiedFret = style().value(Sid::tabShowTiedFret).value<ShowTiedFret>();
+    ShowTiedFret showTiedFret = static_cast<ShowTiedFret>(style().value(Sid::tabShowTiedFret).value<int>());
     if (showTiedFret == ShowTiedFret::TIE_AND_FRET) {
         return false;
     }
 
-    ParenthesizeTiedFret parenthTiedFret = style().value(Sid::tabParenthesizeTiedFret).value<ParenthesizeTiedFret>();
+    auto parenthTiedFret = static_cast<ParenthesizeTiedFret>(style().value(Sid::tabParenthesizeTiedFret).value<int>());
     if (parenthTiedFret == ParenthesizeTiedFret::NEVER || !rtick().isZero()) {
         return true;
     }

@@ -376,7 +376,7 @@ void StaffType::setFretTextStyle(const TextStyleType& val)
             setFretFontUserY(offset.y());
         } break;
         case TextStylePropertyType::FontStyle: {
-            FontStyle fStyle = style().styleV(property.sid).value<FontStyle>();
+            FontStyle fStyle = static_cast<FontStyle>(style().styleV(property.sid).value<int>());
             m_fretFont.setBold(fStyle & FontStyle::Bold);
             m_fretFont.setItalic(fStyle & FontStyle::Italic);
             m_fretFont.setUnderline(fStyle & FontStyle::Underline);

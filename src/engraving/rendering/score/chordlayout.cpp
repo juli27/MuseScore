@@ -780,7 +780,8 @@ void ChordLayout::layoutArticulations(Chord* item, LayoutContext& ctx)
     double _spatium       = ctx.conf().spatium() * mag;
     double _lineDist       = _spatium * staffType->lineDistance().val() / 2;
     const double minDist = ctx.conf().styleMM(Sid::articulationMinDistance) * mag;
-    const ArticulationStemSideAlign articulationHAlign = ctx.conf().styleV(Sid::articulationStemHAlign).value<ArticulationStemSideAlign>();
+    const ArticulationStemSideAlign articulationHAlign
+        = static_cast<ArticulationStemSideAlign>(ctx.conf().styleV(Sid::articulationStemHAlign).value<int>());
     const bool keepArticsTogether = ctx.conf().styleB(Sid::articulationKeepTogether);
     const double stemSideDistance = ctx.conf().styleMM(Sid::propertyDistanceStem) * mag;
     const double headSideDistance = ctx.conf().styleMM(Sid::propertyDistanceHead) * mag;
@@ -1005,7 +1006,8 @@ void ChordLayout::layoutArticulations(Chord* item, LayoutContext& ctx)
 
 void ChordLayout::layoutArticulations2(Chord* item, LayoutContext& ctx, bool layoutOnCrossBeamSide)
 {
-    ArticulationStemSideAlign articulationHAlign = ctx.conf().styleV(Sid::articulationStemHAlign).value<ArticulationStemSideAlign>();
+    ArticulationStemSideAlign articulationHAlign
+        = static_cast<ArticulationStemSideAlign>(ctx.conf().styleV(Sid::articulationStemHAlign).value<int>());
     for (Chord* gc : item->graceNotes()) {
         layoutArticulations2(gc, ctx);
     }
@@ -3347,7 +3349,7 @@ void ChordLayout::layoutNote2(Note* item, LayoutContext& ctx)
     bool isTabStaff = staffType && staffType->isTabStaff();
     // First, for tab staves that have show back-tied fret marks option, we add parentheses to the tied note if
     // the tie spans a system boundary. This can't be done in layout as the system of each note is not decided yet
-    ShowTiedFret showTiedFret = item->style().value(Sid::tabShowTiedFret).value<ShowTiedFret>();
+    ShowTiedFret showTiedFret = static_cast<ShowTiedFret>(item->style().value(Sid::tabShowTiedFret).value<int>());
     bool useParens = isTabStaff && !item->fixed() && item->tieBack()
                      && (showTiedFret != ShowTiedFret::TIE_AND_FRET || item->isContinuationOfBend()) && !item->shouldHideFret();
 

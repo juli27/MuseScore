@@ -69,17 +69,7 @@ bool PropertyValue::operator ==(const PropertyValue& v) const
         return muse::RealIsEqual(v.value<double>(), value<double>());
     }
 
-    assert(m_data);
-    if (!m_data) {
-        return false;
-    }
-
-    assert(v.m_data);
-    if (!v.m_data) {
-        return false;
-    }
-
-    return v.m_type == m_type && v.m_data->equal(m_data.get());
+    return v.m_type == m_type && v.m_data == m_data;
 }
 
 #ifndef NO_QT_SUPPORT
@@ -96,7 +86,7 @@ QVariant PropertyValue::toQVariant() const
     } break;
     case P_TYPE::SIZE_T:      return static_cast<int>(value<size_t>());
     case P_TYPE::REAL:        return value<double>();
-    case P_TYPE::STRING:      return value<QString>();
+    case P_TYPE::STRING:      return value<String>().toQString();
 
     // Geometry
     case P_TYPE::POINT:       return value<PointF>().toQPointF();

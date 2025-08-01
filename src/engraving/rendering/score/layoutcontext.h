@@ -131,7 +131,10 @@ public:
 
     bool firstSystemIndent() const { return styleB(Sid::enableIndentationOnFirstSystem); }
 
-    VerticalAlignRange verticalAlignRange() const { return style().value(Sid::autoplaceVerticalAlignRange).value<VerticalAlignRange>(); }
+    VerticalAlignRange verticalAlignRange() const
+    {
+        return static_cast<VerticalAlignRange>(style().value(Sid::autoplaceVerticalAlignRange).value<int>());
+    }
 
 private:
     const Score* score() const;

@@ -60,7 +60,7 @@ LHTappingShowItems Tapping::lhShowItems() const
     const MStyle& s = style();
     bool tabStaff = staffType()->isTabStaff();
 
-    return s.styleV(tabStaff ? Sid::lhTappingShowItemsTab : Sid::lhTappingShowItemsNormalStave).value<LHTappingShowItems>();
+    return static_cast<LHTappingShowItems>(s.styleV(tabStaff ? Sid::lhTappingShowItemsTab : Sid::lhTappingShowItemsNormalStave).value<int>());
 }
 
 void Tapping::styleChanged()

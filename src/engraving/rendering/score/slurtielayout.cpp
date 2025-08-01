@@ -1487,7 +1487,7 @@ static bool tieSegmentShouldBeSkipped(Tie* item)
         return true;
     }
 
-    ShowTiedFret showTiedFret = item->style().value(Sid::tabShowTiedFret).value<ShowTiedFret>();
+    ShowTiedFret showTiedFret = static_cast<ShowTiedFret>(item->style().value(Sid::tabShowTiedFret).value<int>());
 
     return showTiedFret == ShowTiedFret::NONE;
 }
