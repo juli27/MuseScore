@@ -343,10 +343,24 @@ public:
 
     bool isValid() const;
 
+    template<typename T>
+    bool is() const
+    {
+        return std::visit([](auto&& v) -> bool {
+            return std::is_same_v<T, decltype(v)>;
+        }, m_data);
+    }
+
     P_TYPE type() const;
     bool isEnum() const
     {
         return std::visit([](auto&& v){ return std::is_enum_v<decltype(v)>; }, m_data);
+    }
+
+    template<typename Fn>
+    auto visit(Fn&& f)
+    {
+        return std::visit(std::forward<Fn>(f), m_data);
     }
 
     template<typename T>
@@ -360,7 +374,7 @@ public:
         if (!at) {
             //! HACK Temporary hack for int to enum
             if constexpr (std::is_enum_v<T>) {
-                if (P_TYPE::INT == m_type) {
+                if (is<int>()) {
                     return static_cast<T>(value<int>());
                 }
             }
@@ -380,7 +394,7 @@ public:
 
             //! HACK Temporary hack for bool to int
             if constexpr (std::is_same_v<T, int>) {
-                if (P_TYPE::BOOL == m_type) {
+                if (is<bool>()) {
                     return value<bool>();
                 }
             }
@@ -392,14 +406,14 @@ public:
 
             //! HACK Temporary hack for int to size_t
             if constexpr (std::is_same_v<T, int>) {
-                if (P_TYPE::SIZE_T == m_type) {
+                if (is<size_t>()) {
                     return static_cast<int>(value<size_t>());
                 }
             }
 
             //! HACK Temporary hack for real to Spatium
             if constexpr (std::is_same_v<T, Spatium>) {
-                if (P_TYPE::REAL == m_type) {
+                if (is<double>()) {
                     const double* srv = get<double>();
                     assert(srv);
                     return srv ? Spatium(*srv) : Spatium();
@@ -408,14 +422,14 @@ public:
 
             //! HACK Temporary hack for Spatium to real
             if constexpr (std::is_same_v<T, double>) {
-                if (P_TYPE::SPATIUM == m_type) {
+                if (is<Spatium>()) {
                     return value<Spatium>().val();
                 }
             }
 
             //! HACK Temporary hack for real to Millimetre
             if constexpr (std::is_same_v<T, Millimetre>) {
-                if (P_TYPE::REAL == m_type) {
+                if (is<double>()) {
                     const double* mrv = get<double>();
                     assert(mrv);
                     return mrv ? Millimetre(*mrv) : Millimetre();
@@ -424,14 +438,14 @@ public:
 
             //! HACK Temporary hack for Spatium to real
             if constexpr (std::is_same_v<T, double>) {
-                if (P_TYPE::MILLIMETRE == m_type) {
+                if (is<Millimetre>()) {
                     return value<Millimetre>().val();
                 }
             }
 
             if constexpr (std::is_same_v<T, String>) {
                 //! HACK Temporary hack for Fraction to String
-                if (P_TYPE::FRACTION == m_type) {
+                if (is<Fraction>()) {
                     return value<Fraction>().toString();
                 }
             }
@@ -439,12 +453,12 @@ public:
 #ifndef NO_QT_SUPPORT
             if constexpr (std::is_same_v<T, QString>) {
                 //! HACK Temporary hack for Fraction to String
-                if (P_TYPE::FRACTION == m_type) {
+                if (is<Fraction>()) {
                     return value<Fraction>().toString();
                 }
 
                 //! HACK Temporary hack for String to QString
-                if (P_TYPE::STRING == m_type) {
+                if (is<String>()) {
                     return value<String>().toQString();
                 }
             }
@@ -498,45 +512,6 @@ private:
         // Other
         GroupNodes
         >;
-
-    // struct IArg {
-    //     virtual ~IArg() = default;
-
-    //     virtual bool equal(const IArg* a) const = 0;
-
-    //     virtual bool isEnum() const = 0;
-    //     virtual int enumToInt() const = 0;
-    // };
-
-    // template<typename T>
-    // struct Arg : public IArg {
-    //     T v;
-    //     Arg(const T& v)
-    //         : IArg(), v(v) {}
-
-    //     bool equal(const IArg* a) const override
-    //     {
-    //         assert(a);
-    //         const Arg<T>* at = dynamic_cast<const Arg<T>*>(a);
-    //         assert(at);
-    //         return at ? at->v == v : false;
-    //     }
-
-    //     //! HACK Temporary hack for enum to int
-    //     bool isEnum() const override
-    //     {
-    //         return std::is_enum<T>::value;
-    //     }
-
-    //     int enumToInt() const override
-    //     {
-    //         if constexpr (std::is_enum<T>::value) {
-    //             return static_cast<int>(v);
-    //         } else {
-    //             return -1;
-    //         }
-    //     }
-    // };
 
     template<typename T>
     Value make_data(const T& v) const

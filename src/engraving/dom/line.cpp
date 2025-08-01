@@ -1051,9 +1051,9 @@ bool SLine::setProperty(Pid id, const PropertyValue& v)
         m_lineColor = v.value<Color>();
         break;
     case Pid::LINE_WIDTH:
-        if (v.type() == P_TYPE::MILLIMETRE) {
+        if (v.is<Millimetre>()) {
             m_lineWidth = Spatium::fromMM(v.value<Millimetre>(), spatium());
-        } else if (v.type() == P_TYPE::SPATIUM) {
+        } else if (v.is<Spatium>()) {
             m_lineWidth = v.value<Spatium>();
         }
         break;

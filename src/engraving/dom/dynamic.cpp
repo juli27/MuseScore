@@ -486,7 +486,7 @@ bool Dynamic::setProperty(Pid propertyId, const PropertyValue& v)
 {
     switch (propertyId) {
     case Pid::DYNAMIC_TYPE:
-        if (v.type() == P_TYPE::DYNAMIC_TYPE) {
+        if (v.is<DynamicType>()) {
             setDynamicType(v.value<DynamicType>());
             break;
         }
