@@ -19,129 +19,91 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 #include "xmlwriter.h"
 
-#include "types/typesconv.h"
-
-#include "dom/engravingitem.h"
-#include "dom/property.h"
+#include "engraving/dom/engravingitem.h"
+#include "engraving/dom/property.h"
+#include "engraving/types/typesconv.h"
 
 #include "log.h"
 
-using namespace mu;
-using namespace mu::engraving;
-
 namespace mu::engraving {
 XmlWriter::XmlWriter(muse::io::IODevice* device)
-    : XmlStreamWriter(device)
-{
-}
-
-XmlWriter::~XmlWriter()
-{
-}
-
-void XmlWriter::startElementRaw(const String& s)
-{
-    XmlStreamWriter::startElementRaw(s.toStdString());
-}
-
-void XmlWriter::startElement(const AsciiStringView& name, const Attributes& attrs)
-{
-    XmlStreamWriter::startElement(name, attrs);
-}
+    : XmlStreamWriter(device) {}
 
 void XmlWriter::startElement(const EngravingObject* se, const Attributes& attrs)
 {
-    startElement(se->typeName(), se, attrs);
+    startElement(se->typeName(), attrs);
 }
 
-void XmlWriter::startElement(const AsciiStringView& name, const EngravingObject* se, const Attributes& attrs)
-{
-    XmlStreamWriter::startElement(name, attrs);
-
-    if (_recordElements) {
-        _elements.emplace_back(se, name);
-    }
-}
-
-void XmlWriter::tag(const AsciiStringView& name, const Attributes& attrs)
+void XmlWriter::tag(const std::string_view name, const Attributes& attrs)
 {
     XmlStreamWriter::element(name, attrs);
 }
 
-void XmlWriter::tag(const AsciiStringView& name, const Value& body)
-{
-    XmlStreamWriter::element(name, body);
-}
-
-void XmlWriter::tag(const AsciiStringView& name, const Value& val, const Value& def)
-{
-    if (val == def) {
-        return;
-    }
-    tag(name, val);
-}
-
-void XmlWriter::tag(const AsciiStringView& name, const Attributes& attrs, const Value& body)
+void XmlWriter::tag(const std::string_view name, const Value& body, const Attributes& attrs)
 {
     XmlStreamWriter::element(name, body, attrs);
 }
 
-void XmlWriter::tagRaw(const String& elementWithAttrs)
+void XmlWriter::tag(const std::string_view name, const char* body, const Attributes& attrs)
 {
-    XmlStreamWriter::elementRaw(elementWithAttrs.toStdString());
+    tag(name, std::string_view { body }, attrs);
 }
 
-void XmlWriter::tagRaw(const String& elementWithAttrs, const Value& body)
+void XmlWriter::tag(const std::string_view name, const Value& val, const Value& def, const Attributes& attrs)
 {
-    XmlStreamWriter::elementRaw(elementWithAttrs.toStdString(), body);
+    if (val == def) {
+        return;
+    }
+    tag(name, val, attrs);
 }
 
-//---------------------------------------------------------
-//   tag
-//---------------------------------------------------------
-
-void XmlWriter::tagProperty(Pid id, const PropertyValue& val, const PropertyValue& def)
+void XmlWriter::tagProperty(const Pid id, const PropertyValue& val, const PropertyValue& def)
 {
     if (val == def) {
         return;
     }
 
-    const char* name = propertyName(id);
-    if (name == 0) {
+    const std::string_view name = [&] {
+        const char* n = propertyName(id);
+        return n ? std::string_view{ n } : std::string_view{};
+    }();
+    IF_ASSERT_FAILED(!name.empty()) {
         return;
     }
 
-    P_TYPE valType = val.type();
-    P_TYPE propType = propertyType(id);
+    const P_TYPE valType = val.type();
+    const P_TYPE propType = propertyType(id);
     if (valType != propType) {
         LOGD() << "property value type mismatch, prop: " << name;
     }
 
-    const String writableVal(propertyToString(id, val, /* mscx */ true));
-    if (writableVal.isEmpty()) {
-        //! NOTE The data type is MILLIMETRE, but we write SPATIUM
-        //! (the conversion from Millimetre to Spatium occurred higher up the stack)
-        if (propType == P_TYPE::MILLIMETRE) {
-            propType = P_TYPE::SPATIUM;
-        }
-
-        //! HACK Temporary hack. We have some kind of property with property type BOOL,
-        //! but the used value type is INT (not just 1 and 0)
-        //! see STAFF_BARLINE_SPAN
-        if (propType == P_TYPE::BOOL && valType == P_TYPE::INT) {
-            propType = P_TYPE::INT;
-        }
-
-        tagProperty(name, propType, val);
-    } else {
-        tagProperty(name, P_TYPE::STRING, PropertyValue(writableVal));
+    const std::string writableVal = propertyToString(id, val, /* mscx */ true).toStdString();
+    if (!writableVal.empty()) {
+        element(name, writableVal);
+        return;
     }
+
+    //! NOTE The data type is MILLIMETRE, but we write SPATIUM
+    //! (the conversion from Millimetre to Spatium occurred higher up the stack)
+    if (propType == P_TYPE::MILLIMETRE) {
+        tagProperty(name, P_TYPE::SPATIUM, val);
+        return;
+    }
+
+    //! HACK Temporary hack. We have some kind of property with property type BOOL,
+    //! but the used value type is INT (not just 1 and 0)
+    //! see STAFF_BARLINE_SPAN
+    if (propType == P_TYPE::BOOL && valType == P_TYPE::INT) {
+        tagProperty(name, P_TYPE::INT, val);
+        return;
+    }
+
+    tagProperty(name, propType, val);
 }
 
-void XmlWriter::tagProperty(const AsciiStringView& name, const PropertyValue& val, const PropertyValue& def)
+void XmlWriter::tagProperty(const std::string_view name, const PropertyValue& val, const PropertyValue& def)
 {
     if (val == def) {
         return;
@@ -150,7 +112,48 @@ void XmlWriter::tagProperty(const AsciiStringView& name, const PropertyValue& va
     tagProperty(name, val.type(), val);
 }
 
-void XmlWriter::tagProperty(const AsciiStringView& name, P_TYPE type, const PropertyValue& data)
+void XmlWriter::tagFraction(const std::string_view name, const Fraction& v, const Fraction& def)
+{
+    if (v == def) {
+        return;
+    }
+
+    element(name, v.toString().toStdString());
+}
+
+void XmlWriter::tagPoint(const std::string_view name, const PointF& p)
+{
+    element(name, { { "x", p.x() }, { "y", p.y() } });
+}
+
+void XmlWriter::writeXml(const std::string_view nameWithAttributes, String s)
+{
+    for (size_t i = 0; i < s.size(); ++i) {
+        char16_t c = s.at(i).unicode();
+        if (c < 0x20 && c != 0x09 && c != 0x0A && c != 0x0D) {
+            s[i] = u'?';
+        }
+    }
+
+    elementStringRaw(nameWithAttributes, s.toStdString());
+}
+
+void XmlWriter::tagRaw(const std::string_view nameWithAttributes)
+{
+    XmlStreamWriter::elementRaw(nameWithAttributes);
+}
+
+void XmlWriter::tagRaw(const std::string_view nameWithAttributes, const Value& body)
+{
+    XmlStreamWriter::elementRaw(nameWithAttributes, body);
+}
+
+void XmlWriter::tagRaw(const std::string_view nameWithAttributes, const char* body)
+{
+    tagRaw(nameWithAttributes, std::string_view { body });
+}
+
+void XmlWriter::tagProperty(const std::string_view name, const P_TYPE type, const PropertyValue& data)
 {
     switch (type) {
     case P_TYPE::UNDEFINED:
@@ -327,35 +330,4 @@ void XmlWriter::tagProperty(const AsciiStringView& name, P_TYPE type, const Prop
     break;
     }
 }
-
-void XmlWriter::tagPoint(const AsciiStringView& name, const PointF& p)
-{
-    tag(name, { { "x", p.x() }, { "y", p.y() } });
-}
-
-void XmlWriter::tagFraction(const AsciiStringView& name, const Fraction& v, const Fraction& def)
-{
-    if (v == def) {
-        return;
-    }
-
-    element(name, v.toString().toStdString());
-}
-
-void XmlWriter::writeXml(const String& name, String s)
-{
-    for (size_t i = 0; i < s.size(); ++i) {
-        char16_t c = s.at(i).unicode();
-        if (c < 0x20 && c != 0x09 && c != 0x0A && c != 0x0D) {
-            s[i] = u'?';
-        }
-    }
-
-    elementStringRaw(name.toStdString(), s.toStdString());
-}
-
-String XmlWriter::xmlString(const String& s)
-{
-    return s.toXmlEscaped();
-}
-}
+} // namespace mu::engraving

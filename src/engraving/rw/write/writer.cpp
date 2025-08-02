@@ -173,7 +173,7 @@ void Writer::write(Score* score, XmlWriter& xml, WriteContext& ctx, bool selecti
     for (const auto& t : score->m_metaTags) {
         // do not output "platform" and "creationDate" in test and save template mode
         if ((!MScore::testMode && !MScore::saveTemplateMode) || (t.first != "platform" && t.first != "creationDate")) {
-            xml.tag("metaTag", { { "name", t.first.toXmlEscaped().toStdString() } }, t.second.toStdString());
+            xml.tag("metaTag", t.second.toStdString(), { { "name", t.first.toXmlEscaped().toStdString() } });
         }
     }
 

@@ -2290,7 +2290,7 @@ String TextBase::genText(const LayoutData* ldata) const
                     text += toSymbolXml(f.text.at(i));
                 }
             } else {
-                text += XmlWriter::xmlString(f.text);
+                text += f.text.toXmlEscaped();
             }
             fmt = format;
         }
@@ -3489,7 +3489,7 @@ String TextBase::stripText(bool removeStyle, bool removeSize, bool removeFace) c
                     break;
                 }
             }
-            _txt += XmlWriter::xmlString(f.text);
+            _txt += f.text.toXmlEscaped();
             fmt = format;
         }
         if (block.eol()) {

@@ -21,48 +21,61 @@
  */
 #pragma once
 
-#include "io/iodevice.h"
-#include "serialization/xmlstreamwriter.h"
+#include <string_view>
 
-#include "../dom/property.h"
+#include "global/serialization/xmlstreamwriter.h"
+
+#include "engraving/dom/property.h"
+#include "engraving/types/propertyvalue.h"
+#include "engraving/types/types.h"
+
+namespace muse::io {
+class IODevice;
+}
 
 namespace mu::engraving {
 class EngravingObject;
+
 class XmlWriter : public muse::XmlStreamWriter
 {
 public:
-    XmlWriter(muse::io::IODevice* dev);
-    ~XmlWriter();
+    XmlWriter(muse::io::IODevice*);
 
-    const std::vector<std::pair<const EngravingObject*, AsciiStringView> >& elements() const { return _elements; }
-    void setRecordElements(bool record) { _recordElements = record; }
+    ~XmlWriter() override = default;
+    XmlWriter(const XmlWriter&) = delete;
+    XmlWriter(XmlWriter&&) = delete;
+    XmlWriter& operator=(const XmlWriter&) = delete;
+    XmlWriter& operator=(XmlWriter&&) = delete;
 
-    void startElementRaw(const String& name);
-    void startElement(const AsciiStringView& name, const Attributes& attrs = {});
+    using XmlStreamWriter::startElement;
     void startElement(const EngravingObject* se, const Attributes& attrs = {});
-    void startElement(const AsciiStringView& name, const EngravingObject* se, const Attributes& attrs = {});
 
-    void tag(const AsciiStringView& name, const Attributes& attrs = {});
-    void tag(const AsciiStringView& name, const Value& body);
-    void tag(const AsciiStringView& name, const Value& val, const Value& def);
-    void tag(const AsciiStringView& name, const Attributes& attrs, const Value& body);
-    void tagRaw(const String& elementWithAttrs);
-    void tagRaw(const String& elementWithAttrs, const Value& body);
+    void tag(std::string_view name, const Attributes& attrs = {});
+    void tag(std::string_view name, const Value& body, const Attributes& attrs = {});
+    // disambiguate std::string_view and std::string
+    void tag(std::string_view name, const char* body, const Attributes& attrs = {});
+    void tag(std::string_view name, const Value& val, const Value& def, const Attributes& attrs = {});
 
-    void tagProperty(Pid id, const PropertyValue& data, const PropertyValue& def = PropertyValue());
-    void tagProperty(const AsciiStringView&, const PropertyValue& data, const PropertyValue& def = PropertyValue());
+    void tagProperty(Pid, const PropertyValue& data, const PropertyValue& def = PropertyValue());
+    void tagProperty(std::string_view name, const PropertyValue& data, const PropertyValue& def = PropertyValue());
 
-    void tagFraction(const AsciiStringView& name, const Fraction& v, const Fraction& def = Fraction());
-    void tagPoint(const AsciiStringView& name, const PointF& v);
+    void tagFraction(std::string_view name, const Fraction&, const Fraction& def = Fraction());
+    void tagPoint(std::string_view name, const PointF&);
 
-    void writeXml(const String&, String s);
+    // TODO: provide a way to serialize a XML DOM tree
+    //[[deprecated]]
+    void writeXml(std::string_view nameWithAttributes, String s);
 
-    static String xmlString(const String&);
+    using XmlStreamWriter::startElementRaw;
+    [[deprecated("please use element(name, attrs)")]]
+    void tagRaw(std::string_view nameWithAttributes);
+    [[deprecated("please use element(name, body, attrs)")]]
+    void tagRaw(std::string_view nameWithAttributes, const Value& body);
+    // disambiguate std::string_view and std::string
+    [[deprecated("please use element(name, body, attrs)")]]
+    void tagRaw(std::string_view nameWithAttributes, const char* body);
 
 private:
-    void tagProperty(const AsciiStringView& name, P_TYPE type, const PropertyValue& data);
-
-    std::vector<std::pair<const EngravingObject*, AsciiStringView> > _elements;
-    bool _recordElements = false;
+    void tagProperty(std::string_view name, P_TYPE, const PropertyValue& data);
 };
 }

@@ -23,15 +23,12 @@
 #include "part.h"
 
 #include "containers.h"
-#include "style/style.h"
-#include "rw/xmlwriter.h"
 
 #include "chordrest.h"
 #include "factory.h"
 #include "fret.h"
 #include "harppedaldiagram.h"
 #include "instrtemplate.h"
-#include "instrchange.h"
 #include "linkedobjects.h"
 #include "masterscore.h"
 #include "measure.h"
@@ -563,7 +560,7 @@ void Part::setShortNameAll(const String& s)
 
 void Part::setPlainLongName(const String& s)
 {
-    setLongName(XmlWriter::xmlString(s));
+    setLongName(s.toXmlEscaped());
 }
 
 //---------------------------------------------------------
@@ -572,7 +569,7 @@ void Part::setPlainLongName(const String& s)
 
 void Part::setPlainShortName(const String& s)
 {
-    setShortName(XmlWriter::xmlString(s));
+    setShortName(s.toXmlEscaped());
 }
 
 //---------------------------------------------------------
@@ -581,7 +578,7 @@ void Part::setPlainShortName(const String& s)
 
 void Part::setPlainLongNameAll(const String& s)
 {
-    setLongNameAll(XmlWriter::xmlString(s));
+    setLongNameAll(s.toXmlEscaped());
 }
 
 //---------------------------------------------------------
@@ -590,7 +587,7 @@ void Part::setPlainLongNameAll(const String& s)
 
 void Part::setPlainShortNameAll(const String& s)
 {
-    setShortNameAll(XmlWriter::xmlString(s));
+    setShortNameAll(s.toXmlEscaped());
 }
 
 //---------------------------------------------------------

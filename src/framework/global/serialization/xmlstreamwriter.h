@@ -60,6 +60,10 @@ public:
 
         Attribute(const std::string_view n, const Value v)
             : name{n}, value{v} {}
+
+        // disambiguate std::string_view and std::string
+        Attribute(const std::string_view n, const char* v)
+            : name{n}, value{std::string_view { v }} {}
     };
     // TODO(C++20): use std::span
     using Attributes = std::vector<Attribute>;
@@ -77,6 +81,8 @@ public:
 
     // <name attr="value">body</name>
     void element(std::string_view name, const Value& body, const Attributes& attrs = {});
+    // disambiguate std::string_view and std::string
+    void element(std::string_view name, const char* body, const Attributes& attrs = {});
 
     void comment(std::string_view);
 

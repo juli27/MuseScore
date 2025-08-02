@@ -1250,7 +1250,7 @@ void TWrite::writeProperties(const TextBase* item, XmlWriter& xml, WriteContext&
         writeProperty(item, xml, spp.pid);
     }
     if (writeText) {
-        xml.writeXml(u"text", item->xmlText());
+        xml.writeXml("text", item->xmlText());
     }
 
     writeProperty(item, xml, Pid::TEXT_LINKED_TO_MASTER);
@@ -1307,7 +1307,7 @@ void TWrite::write(const FiguredBass* item, XmlWriter& xml, WriteContext& ctx)
 
 void TWrite::write(const FiguredBassItem* item, XmlWriter& xml, WriteContext&)
 {
-    xml.startElement("FiguredBassItem", item);
+    xml.startElement("FiguredBassItem");
     xml.tag("brackets", {
         { "b0", int(item->parenth1()) },
         { "b1", int(item->parenth2()) },
@@ -1408,7 +1408,7 @@ void TWrite::write(const FretDiagram* item, XmlWriter& xml, WriteContext& ctx)
             for (auto const& d : allDots) {
                 if (d.exists()) {
                     // TODO: write fingering
-                    xml.tag("dot", { { "fret", d.fret } }, FretItem::dotTypeToName(d.dtype).toStdString());
+                    xml.tag("dot", FretItem::dotTypeToName(d.dtype).toStdString(), { { "fret", d.fret } });
                 }
             }
 
@@ -1421,7 +1421,7 @@ void TWrite::write(const FretDiagram* item, XmlWriter& xml, WriteContext& ctx)
                 continue;
             }
 
-            xml.tag("barre", { { "start", b.startString }, { "end", b.endString } }, fi);
+            xml.tag("barre", fi, { { "start", b.startString }, { "end", b.endString } });
         }
     }
     xml.endElement();
@@ -1613,7 +1613,7 @@ void TWrite::writeProperties(const SLine* item, XmlWriter& xml, WriteContext& ct
 
     double _spatium = item->style().spatium();
     for (const SpannerSegment* seg : item->spannerSegments()) {
-        xml.startElement("Segment", seg);
+        xml.startElement("Segment");
         xml.tag("subtype", int(seg->spannerSegmentType()));
         xml.tagPoint("offset", seg->offset() / _spatium);
         xml.tagPoint("off2", seg->userOff2() / _spatium);
@@ -1845,7 +1845,7 @@ void TWrite::write(const HarpPedalDiagram* item, XmlWriter& xml, WriteContext& c
     // Write vector of harp strings.  Order is always D, C, B, E, F, G, A
     xml.startElement("pedalState");
     for (size_t idx = 0; idx < item->getPedalState().size(); idx++) {
-        xml.tag("string", { { "name", idx } }, static_cast<int>(item->getPedalState().at(idx)));
+        xml.tag("string", static_cast<int>(item->getPedalState().at(idx)), { { "name", idx } });
     }
     xml.endElement();
 
@@ -1980,15 +1980,15 @@ void TWrite::write(const Instrument* item, XmlWriter& xml, WriteContext&, const 
         if (ct.concertClef == ct.transposingClef) {
             if (ct.concertClef != ClefType::G) {
                 if (i) {
-                    xml.tag("clef", { { "staff", i + 1 } }, TConv::toXml(ct.concertClef));
+                    xml.tag("clef", TConv::toXml(ct.concertClef), { { "staff", i + 1 } });
                 } else {
                     xml.tag("clef", TConv::toXml(ct.concertClef));
                 }
             }
         } else {
             if (i) {
-                xml.tag("concertClef", { { "staff", i + 1 } }, TConv::toXml(ct.concertClef));
-                xml.tag("transposingClef", { { "staff", i + 1 } }, TConv::toXml(ct.transposingClef));
+                xml.tag("concertClef", TConv::toXml(ct.concertClef), { { "staff", i + 1 } });
+                xml.tag("transposingClef", TConv::toXml(ct.transposingClef), { { "staff", i + 1 } });
             } else {
                 xml.tag("concertClef", TConv::toXml(ct.concertClef));
                 xml.tag("transposingClef", TConv::toXml(ct.transposingClef));
@@ -2123,9 +2123,10 @@ void TWrite::write(const StaffName* item, XmlWriter& xml, const char* tag)
 {
     if (!item->name().isEmpty()) {
         if (item->pos() == 0) {
-            xml.writeXml(String::fromUtf8(tag), item->name());
+            xml.writeXml(tag, item->name());
         } else {
-            xml.writeXml(String(u"%1 pos=\"%2\"").arg(String::fromUtf8(tag)).arg(item->pos()), item->name());
+            xml.writeXml(String(u"%1 pos=\"%2\"").arg(String::fromUtf8(tag)).arg(item->pos()).toStdString(),
+                         item->name());
         }
     }
 }
@@ -2867,7 +2868,7 @@ void TWrite::writeProperties(const StaffTextBase* item, XmlWriter& xml, WriteCon
     }
     if (item->setAeolusStops()) {
         for (int i = 0; i < 4; ++i) {
-            xml.tag("aeolus", { { "group", i } }, item->aeolusStop(i));
+            xml.tag("aeolus", item->aeolusStop(i), { { "group", i } });
         }
     }
     if (item->swing()) {
@@ -3023,7 +3024,7 @@ void TWrite::write(const StringData* item, XmlWriter& xml)
             attrs.push_back({ "useFlat", "1" });
         }
 
-        xml.tag("string", attrs, strg.pitch);
+        xml.tag("string", strg.pitch, attrs);
     }
     xml.endElement();
 }
@@ -3315,7 +3316,7 @@ void TWrite::write(const Tuplet* item, XmlWriter& xml, WriteContext& ctx)
     }
 
     if (item->number()) {
-        xml.startElement("Number", item->number());
+        xml.startElement("Number");
         writeProperty(item->number(), xml, Pid::TEXT_STYLE);
         writeProperty(item->number(), xml, Pid::TEXT);
         xml.endElement();

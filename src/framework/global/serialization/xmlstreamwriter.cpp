@@ -101,6 +101,11 @@ void XmlStreamWriter::element(const std::string_view name, const Attributes& att
     m_stream << "/>\n"sv;
 }
 
+void XmlStreamWriter::element(std::string_view name, const char* body, const Attributes& attrs)
+{
+    element(name, std::string_view { body }, attrs);
+}
+
 void XmlStreamWriter::element(const std::string_view name, const Value& body, const Attributes& attrs)
 {
     DO_ASSERT(!name.empty() && !strings::contains(name, ' '));
@@ -209,6 +214,8 @@ void XmlStreamWriter::writeValue(const Value& v)
     case 5: m_stream << std::get<double>(v);
         break;
     case 6: m_stream << escapeString(std::get<std::string_view>(v));
+        break;
+    case 7: m_stream << escapeString(std::get<std::string>(v));
         break;
     default:
         LOGE() << "invalid value index: " << v.index();

@@ -46,7 +46,7 @@ void SynthesizerState::write(XmlWriter& xml, bool force /* = false */) const
             muse::ByteArray ba = g.name().toAscii();
             xml.startElement(ba.constChar());
             for (const IdValue& v : g) {
-                xml.tag("val", { { "id", v.id } }, v.data.toStdString());
+                xml.tag("val", v.data.toStdString(), { { "id", v.id } });
             }
             xml.endElement();
         }
