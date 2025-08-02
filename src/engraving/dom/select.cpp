@@ -1115,7 +1115,7 @@ muse::ByteArray Selection::staffMimeData() const
         for (voice_idx_t voice = 0; voice < VOICES; voice++) {
             if (hasElementInTrack(seg1, seg2, startTrack + voice) && filter.canSelectVoice(voice)) {
                 Fraction offset = firstElementInTrack(seg1, seg2, startTrack + voice) - tickStart();
-                xml.tag("voice", { { "id", voice } }, offset.ticks());
+                xml.tag("voice", offset.ticks(), { { "id", voice } });
             }
         }
         xml.endElement();     // </voiceOffset>

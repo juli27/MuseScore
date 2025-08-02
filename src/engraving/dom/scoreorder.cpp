@@ -546,7 +546,7 @@ void ScoreOrder::write(XmlWriter& xml) const
 
     for (const auto& p : instrumentMap) {
         xml.startElement("instrument", { { "id", p.first.toStdString() } });
-        xml.tag("family", { { "id", p.second.id.toStdString() } }, p.second.name.toStdString());
+        xml.tag("family", p.second.name.toStdString(), { { "id", p.second.id.toStdString() } });
         xml.endElement();
     }
 

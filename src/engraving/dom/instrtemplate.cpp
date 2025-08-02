@@ -312,14 +312,14 @@ void InstrumentTemplate::write(XmlWriter& xml) const
     for (staff_idx_t i = 0; i < staffCount; ++i) {
         if (clefTypes[i].concertClef == clefTypes[i].transposingClef) {
             if (i) {
-                xml.tag("clef", { { "staff", i + 1 } }, TConv::toXml(clefTypes[i].concertClef));
+                xml.tag("clef", TConv::toXml(clefTypes[i].concertClef), { { "staff", i + 1 } });
             } else {
                 xml.tag("clef", TConv::toXml(clefTypes[i].concertClef));
             }
         } else {
             if (i) {
-                xml.tag("concertClef", { { "staff", i + 1 } }, TConv::toXml(clefTypes[i].concertClef));
-                xml.tag("transposingClef", { { "staff", i + 1 } }, TConv::toXml(clefTypes[i].transposingClef));
+                xml.tag("concertClef", TConv::toXml(clefTypes[i].concertClef), { { "staff", i + 1 } });
+                xml.tag("transposingClef", TConv::toXml(clefTypes[i].transposingClef), { { "staff", i + 1 } });
             } else {
                 xml.tag("concertClef", TConv::toXml(clefTypes[i].concertClef));
                 xml.tag("transposingClef", TConv::toXml(clefTypes[i].transposingClef));
@@ -327,14 +327,14 @@ void InstrumentTemplate::write(XmlWriter& xml) const
         }
         if (staffLines[i] != 5) {
             if (i) {
-                xml.tag("stafflines", { { "staff", i + 1 } }, staffLines[i]);
+                xml.tag("stafflines", staffLines[i], { { "staff", i + 1 } });
             } else {
                 xml.tag("stafflines", staffLines[i]);
             }
         }
         if (smallStaff[i]) {
             if (i) {
-                xml.tag("smallStaff", { { "staff", i + 1 } }, smallStaff[i]);
+                xml.tag("smallStaff", smallStaff[i], { { "staff", i + 1 } });
             } else {
                 xml.tag("smallStaff", smallStaff[i]);
             }
@@ -342,21 +342,21 @@ void InstrumentTemplate::write(XmlWriter& xml) const
 
         if (bracket[i] != BracketType::NO_BRACKET) {
             if (i) {
-                xml.tag("bracket", { { "staff", i + 1 } }, int(bracket[i]));
+                xml.tag("bracket", int(bracket[i]), { { "staff", i + 1 } });
             } else {
                 xml.tag("bracket", int(bracket[i]));
             }
         }
         if (bracketSpan[i] != 0) {
             if (i) {
-                xml.tag("bracketSpan", { { "staff", i + 1 } }, bracketSpan[i]);
+                xml.tag("bracketSpan", bracketSpan[i], { { "staff", i + 1 } });
             } else {
                 xml.tag("bracketSpan", bracketSpan[i]);
             }
         }
         if (barlineSpan[i]) {
             if (i) {
-                xml.tag("barlineSpan", { { "staff", i + 1 } }, barlineSpan[i]);
+                xml.tag("barlineSpan", barlineSpan[i], { { "staff", i + 1 } });
             } else {
                 xml.tag("barlineSpan", barlineSpan[i]);
             }

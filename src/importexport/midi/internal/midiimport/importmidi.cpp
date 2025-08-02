@@ -923,7 +923,7 @@ void setTrackInfo(MTrack& mt)
 
     if (mt.staff->isTop()) {
         Part* part  = mt.staff->part();
-        part->setLongName(XmlWriter::xmlString(MidiInstr::concatenateWithComma(trackInstrName, mt.name)));
+        part->setLongName(String::fromQString(MidiInstr::concatenateWithComma(trackInstrName, mt.name)).toXmlEscaped());
         part->setPartName(part->longName());
         part->setMidiChannel(mt.mtrack->outChannel());
         int bank = 0;

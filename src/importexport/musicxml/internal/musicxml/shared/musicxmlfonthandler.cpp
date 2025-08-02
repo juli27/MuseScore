@@ -202,7 +202,7 @@ void MScoreTextToMusicXml::writeTextFragments(const std::list<TextFragment>& fr,
     for (const TextFragment& f : fr) {
         newFormat = f.format;
         String formatAttr = updateFormat();
-        xml.tagRaw(tagname + (firstTime ? attribs : String()) + formatAttr, f.text.toStdString());
+        xml.tagRaw((tagname + (firstTime ? attribs : String()) + formatAttr).toStdString(), f.text.toStdString());
         firstTime = false;
     }
 }
