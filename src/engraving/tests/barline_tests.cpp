@@ -22,218 +22,200 @@
 
 #include <gtest/gtest.h>
 
-#include "dom/barline.h"
-#include "dom/bracket.h"
-#include "dom/factory.h"
-#include "dom/layoutbreak.h"
-#include "dom/masterscore.h"
-#include "dom/measure.h"
-#include "dom/system.h"
-#include "dom/timesig.h"
-#include "dom/undo.h"
+#include <memory>
+#include <string_view>
+
+#include "global/stringutils.h"
+
+#include "engraving/dom/barline.h"
+#include "engraving/dom/bracket.h"
+#include "engraving/dom/factory.h"
+#include "engraving/dom/layoutbreak.h"
+#include "engraving/dom/masterscore.h"
+#include "engraving/dom/measure.h"
+#include "engraving/dom/system.h"
+#include "engraving/dom/timesig.h"
+#include "engraving/dom/undo.h"
 
 #include "utils/scorerw.h"
 #include "utils/scorecomp.h"
 
-using namespace mu;
-using namespace mu::engraving;
+using namespace std::literals;
+using namespace muse;
 
-static const String BARLINE_DATA_DIR(u"barline_data/");
+namespace mu::engraving {
+using MasterScorePtr = std::unique_ptr<const MasterScore>;
+using MutMasterScorePtr = std::unique_ptr<MasterScore>;
 
-//---------------------------------------------------------
-//   BarlineTests
-//---------------------------------------------------------
+namespace {
+constexpr std::string_view BARLINE_DATA_DIR = "barline_data"sv;
+constexpr track_idx_t FIRST_TRACK_IDX = 0;
+
+MutMasterScorePtr readMutScore(const std::string_view fileName)
+{
+    const std::string filePath = strings::concat(BARLINE_DATA_DIR, "/"sv, fileName);
+    MasterScore* score = ScoreRW::readScore(String::fromUtf8(filePath));
+
+    return MutMasterScorePtr { score };
+}
+
+MasterScorePtr readScore(const std::string_view fileName)
+{
+    return readMutScore(fileName);
+}
+}
 
 class Engraving_BarlineTests : public ::testing::Test
 {
-public:
 };
 
-//---------------------------------------------------------
-//  barline01
-//  Check bar line and brackets presence and length with hidden empty staves:
-//    A score with:
-//          3 staves,
-//          bracket across all 3 staves
-//          bar lines across all 3 staves
-//          systems with each staff hidden in turn because empty
-//    is loaded, laid out and bracket/bar line sizes are checked.
-//
-//    NO REFERENCE SCORE IS USED: the test has to do with layout/formatting,
-//    not with edit or read/save operations.
-//---------------------------------------------------------
-
-// actual 3-staff bracket should be high 28.6 SP ca.: allow for some layout margin
-static const double BRACKET0_HEIGHT_MIN     = 27;
-static const double BRACKET0_HEIGHT_MAX     = 30;
-// actual 2-staff bracket should be high 18.1 SP ca.
-static const double BRACKET_HEIGHT_MIN      = 17;
-static const double BRACKET_HEIGHT_MAX      = 20;
-
+// Check bar line and brackets presence and length with hidden empty staves:
+//   A score with:
+//         3 staves,
+//         bracket across all 3 staves
+//         bar lines across all 3 staves
+//         systems with each staff hidden in turn because empty
+//   is loaded, laid out and bracket/bar line sizes are checked.
+// TODO: verifying the height should be done by vtests / layout tests
 TEST_F(Engraving_BarlineTests, barline01)
 {
-    Score* score = ScoreRW::readScore(BARLINE_DATA_DIR + "barline01.mscx");
-    EXPECT_TRUE(score);
+    // actual 3-staff bracket should be high 28.6 SP ca.: allow for some layout margin
+    static constexpr double BRACKET0_HEIGHT_MIN = 27.0;
+    static constexpr double BRACKET0_HEIGHT_MAX = 30.0;
+    // actual 2-staff bracket should be high 18.1 SP ca.
+    static constexpr double BRACKET_HEIGHT_MIN = 17.0;
+    static constexpr double BRACKET_HEIGHT_MAX = 20.0;
 
-    double height, heightMin, heightMax;
-    double spatium = score->style().spatium();
-    int sysNo = 0;
-    for (System* sys : score->systems()) {
+    const MasterScorePtr score = readScore("barline01.mscx"sv);
+    ASSERT_TRUE(score);
+
+    const double spatium = score->style().spatium();
+    bool isFirstSystem = true;
+    for (const System* sys : score->systems()) {
         // check number of the brackets of each system
-        EXPECT_EQ(sys->brackets().size(), 1);
+        ASSERT_EQ(sys->brackets().size(), 1);
 
         // check height of the bracket of each system
         // (bracket height is different between first system (3 staves) and other systems (2 staves) )
-        Bracket* bracket = sys->brackets().at(0);
-        height      = bracket->ldata()->bbox().height() / spatium;
-        heightMin   = (sysNo == 0) ? BRACKET0_HEIGHT_MIN : BRACKET_HEIGHT_MIN;
-        heightMax   = (sysNo == 0) ? BRACKET0_HEIGHT_MAX : BRACKET_HEIGHT_MAX;
+        const Bracket* bracket = sys->brackets().at(0);
+        const double height = bracket->ldata()->bbox().height() / spatium;
+        const double heightMin = isFirstSystem ? BRACKET0_HEIGHT_MIN : BRACKET_HEIGHT_MIN;
+        const double heightMax = isFirstSystem ? BRACKET0_HEIGHT_MAX : BRACKET_HEIGHT_MAX;
 
         EXPECT_GT(height, heightMin);
         EXPECT_LT(height, heightMax);
 
         // check presence and height of the bar line of each measure of each system
-        // (2 measure for each system)
-        for (int msrNo=0; msrNo < 2; ++msrNo) {
-            Measure* msr = toMeasure(sys->measure(msrNo));
-            Segment* seg = msr->findSegment(SegmentType::EndBarLine, msr->tick() + msr->ticks());
-            EXPECT_TRUE(seg);
+        // TODO: where is the span/height checked?
+        for (MeasureBase* mb : sys->measures()) {
+            const Measure* msr = toMeasure(mb);
+            const Segment* seg = msr->findSegment(SegmentType::EndBarLine, mb->endTick());
+            ASSERT_TRUE(seg);
 
-            BarLine* bar = toBarLine(seg->element(0));
+            const BarLine* bar = toBarLine(seg->element(FIRST_TRACK_IDX));
             EXPECT_TRUE(bar);
         }
-        sysNo++;
-    }
 
-    delete score;
+        isFirstSystem = false;
+    }
 }
 
-//---------------------------------------------------------
-//   barline02
-//   add a 3/4 time signature in the second measure and check bar line 'generated' status
-//
-//    NO REFERENCE SCORE IS USED.
-//---------------------------------------------------------
+// add a 3/4 time signature in the second measure and check bar line 'generated' status
 TEST_F(Engraving_BarlineTests, barline02)
 {
-    Score* score = ScoreRW::readScore(BARLINE_DATA_DIR + "barline02.mscx");
-    EXPECT_TRUE(score);
+    const MutMasterScorePtr score = readMutScore("barline02.mscx"sv);
+    ASSERT_TRUE(score);
 
     Measure* msr = score->firstMeasure()->nextMeasure();
     TimeSig* ts  = Factory::createTimeSig(score->dummy()->segment());
     ts->setSig(Fraction(3, 4), TimeSigType::NORMAL);
 
-    score->cmdAddTimeSig(msr, 0, ts, false);
+    constexpr bool isLocal = false;
+    score->cmdAddTimeSig(msr, staff_idx_t { 0 }, ts, isLocal);
     score->doLayout();
 
-    msr = score->firstMeasure();
-    while ((msr = msr->nextMeasure())) {
-        Segment* seg = msr->findSegment(SegmentType::EndBarLine, msr->tick() + msr->ticks());
-        EXPECT_TRUE(seg);
+    for (const Measure* m = score->firstMeasure()->nextMeasure(); m; m = m->nextMeasure()) {
+        const Segment* seg = m->findSegment(SegmentType::EndBarLine, m->endTick());
+        ASSERT_TRUE(seg);
 
-        BarLine* bar = static_cast<BarLine*>(seg->element(0));
-        EXPECT_TRUE(bar);
+        const BarLine* bar = toBarLine(seg->element(FIRST_TRACK_IDX));
+        ASSERT_TRUE(bar);
 
         // bar line should be generated if NORMAL, except the END one at the end
-        bool test = bar->generated();
-        EXPECT_TRUE(test);
+        EXPECT_TRUE(bar->generated());
     }
-
-    delete score;
 }
 
-//---------------------------------------------------------
-//   barline03
-//   Sets a staff bar line span involving spanFrom and spanTo and
-//   check that it is properly applied to start-repeat
-//
-//   NO REFERENCE SCORE IS USED.
-//---------------------------------------------------------
+// Sets a staff bar line span involving spanFrom and spanTo and
+// check that it is properly applied to start-repeat
 TEST_F(Engraving_BarlineTests, barline03)
 {
-    Score* score = ScoreRW::readScore(BARLINE_DATA_DIR + "barline03.mscx");
-    EXPECT_TRUE(score);
+    const MutMasterScorePtr score = readMutScore("barline03.mscx"sv);
+    ASSERT_TRUE(score);
 
+    Staff* firstStaff = score->staff(0);
     score->startCmd(TranslatableString::untranslatable("Engraving barline tests"));
-    score->undo(new ChangeProperty(score->staff(0), Pid::STAFF_BARLINE_SPAN, 1));
-    score->undo(new ChangeProperty(score->staff(0), Pid::STAFF_BARLINE_SPAN_FROM, 2));
-    score->undo(new ChangeProperty(score->staff(0), Pid::STAFF_BARLINE_SPAN_TO, -2));
+    firstStaff->undoChangeProperty(Pid::STAFF_BARLINE_SPAN, 1);
+    firstStaff->undoChangeProperty(Pid::STAFF_BARLINE_SPAN_FROM, 2);
+    firstStaff->undoChangeProperty(Pid::STAFF_BARLINE_SPAN_TO, -2);
     score->endCmd();
 
     // 'go' to 5th measure
-    Measure* msr = score->firstMeasure();
-    for (int i=0; i < 4; i++) {
+    const Measure* msr = score->firstMeasure();
+    for (int i = 0; i < 4; i++) {
         msr = msr->nextMeasure();
     }
     // check span data of measure-initial start-repeat bar line
-    Segment* seg = msr->findSegment(SegmentType::StartRepeatBarLine, msr->tick());
-    EXPECT_TRUE(seg);
+    const Segment* seg = msr->findSegment(SegmentType::StartRepeatBarLine, msr->tick());
+    ASSERT_TRUE(seg);
 
-    BarLine* bar = toBarLine(seg->element(0));
+    const BarLine* bar = toBarLine(seg->element(FIRST_TRACK_IDX));
     EXPECT_TRUE(bar);
-
-    delete score;
 }
 
-//---------------------------------------------------------
-//   barline04
-//   Sets custom span parameters to a system-initial start-repeat bar line and
-//   check that it is properly applied to it and to the start-repeat bar lines of staves below.
-//
-//   NO REFERENCE SCORE IS USED.
-//---------------------------------------------------------
+// Sets custom span parameters to a system-initial start-repeat bar line and
+// check that it is properly applied to it and to the start-repeat bar lines of staves below.
 TEST_F(Engraving_BarlineTests, barline04)
 {
-    Score* score = ScoreRW::readScore(BARLINE_DATA_DIR + "barline04.mscx");
-    EXPECT_TRUE(score);
-
-    score->doLayout();
+    const MutMasterScorePtr score = readMutScore("barline04.mscx"sv);
+    ASSERT_TRUE(score);
 
     score->startCmd(TranslatableString::untranslatable("Engraving barline tests"));
     // 'go' to 5th measure
     Measure* msr = score->firstMeasure();
-    for (int i=0; i < 4; i++) {
+    for (int i = 0; i < 4; i++) {
         msr = msr->nextMeasure();
     }
     // check span data of measure-initial start-repeat bar line
     Segment* seg = msr->findSegment(SegmentType::StartRepeatBarLine, msr->tick());
-    EXPECT_TRUE(seg);
+    ASSERT_TRUE(seg);
 
-    BarLine* bar = static_cast<BarLine*>(seg->element(0));
-    EXPECT_TRUE(bar);
+    BarLine* bar = static_cast<BarLine*>(seg->element(FIRST_TRACK_IDX));
+    ASSERT_TRUE(bar);
 
-    bar->undoChangeProperty(Pid::BARLINE_SPAN, 2);
+    bar->undoChangeProperty(Pid::BARLINE_SPAN, true);
     bar->undoChangeProperty(Pid::BARLINE_SPAN_FROM, 2);
     bar->undoChangeProperty(Pid::BARLINE_SPAN_TO, 6);
     score->endCmd();
 
-    EXPECT_GT(bar->spanStaff(), 0);
+    EXPECT_TRUE(static_cast<bool>(bar->spanStaff()));
     EXPECT_EQ(bar->spanFrom(), 2);
     EXPECT_EQ(bar->spanTo(), 6);
 
     // check start-repeat bar ine in second staff is gone
-    EXPECT_EQ(seg->element(1), nullptr);
-
-    delete score;
+    EXPECT_EQ(seg->element(track_idx_t { 1 }), nullptr);
 }
 
-//---------------------------------------------------------
-//   barline05
-//   Adds a line break in the middle of a end-start-repeat bar line and then checks the two resulting
-//   bar lines (an end-repeat and a start-repeat) are not marked as generated.
-//
-//   NO REFERENCE SCORE IS USED.
-//---------------------------------------------------------
+// Adds a line break in the middle of a end-start-repeat bar line and then checks the two resulting
+// bar lines (an end-repeat and a start-repeat) are not marked as generated.
 TEST_F(Engraving_BarlineTests, barline05)
 {
-    Score* score = ScoreRW::readScore(BARLINE_DATA_DIR + "barline05.mscx");
-    EXPECT_TRUE(score);
-
-    score->doLayout();
+    const MutMasterScorePtr score = readMutScore("barline05.mscx"sv);
+    ASSERT_TRUE(score);
 
     // 'go' to 4th measure
     Measure* msr = score->firstMeasure();
-    for (int i=0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {
         msr = msr->nextMeasure();
     }
     // create and add a LineBreak element
@@ -245,179 +227,151 @@ TEST_F(Engraving_BarlineTests, barline05)
     score->doLayout();
 
     // check an end-repeat bar line has been created at the end of this measure and it is generated
-    Segment* seg = msr->findSegment(SegmentType::EndBarLine, msr->tick() + msr->ticks());
-    EXPECT_TRUE(seg);
+    Segment* seg = msr->findSegment(SegmentType::EndBarLine, msr->endTick());
+    ASSERT_TRUE(seg);
 
-    BarLine* bar = static_cast<BarLine*>(seg->element(0));
-    EXPECT_TRUE(bar);
+    const BarLine* bar = toBarLine(seg->element(FIRST_TRACK_IDX));
+    ASSERT_TRUE(bar);
 
     EXPECT_EQ(bar->barLineType(), BarLineType::END_REPEAT);
     EXPECT_TRUE(bar->generated());
 
-    // // check an end-repeat bar line has been created at the beginning of the next measure and it is not generated
-    // check an end-repeat bar line has been created at the beginning of the next measure and it is generated
+    // check a start-repeat bar line has been created at the beginning of the next measure and it is generated
     msr = msr->nextMeasure();
     seg = msr->findSegment(SegmentType::StartRepeatBarLine, msr->tick());
-    EXPECT_TRUE(seg);
+    ASSERT_TRUE(seg);
 
-    bar = static_cast<BarLine*>(seg->element(0));
-    EXPECT_TRUE(bar);
+    bar = toBarLine(seg->element(FIRST_TRACK_IDX));
+    ASSERT_TRUE(bar);
     EXPECT_TRUE(bar->generated());
-
-    delete score;
 }
 
-//---------------------------------------------------------
-//   barline06
-//   Read a score with 3 staves and custom bar line sub-types for staff i-th at measure i-th
-//   and check the custom syb-types are applied only to their respective bar lines,
-//   rather than to whole measures.
-//
-//   NO REFERENCE SCORE IS USED.
-//---------------------------------------------------------
+// Read a score with 3 staves and custom bar line sub-types for staff i-th at measure i-th
+// and check the custom syb-types are applied only to their respective bar lines,
+// rather than to whole measures.
 TEST_F(Engraving_BarlineTests, barline06)
 {
-    Score* score = ScoreRW::readScore(BARLINE_DATA_DIR + "barline06.mscx");
-    EXPECT_TRUE(score);
-
-    score->doLayout();
+    const MasterScorePtr score = readScore("barline06.mscx"sv);
+    ASSERT_TRUE(score);
 
     // scan each measure
-    Measure* msr   = score->firstMeasure();
-    for (int i=0; i < 3; i++) {
+    const Measure* msr = score->firstMeasure();
+    for (unsigned int i = 0; i < 3; i++) {
         // locate end-measure bar line segment
-        Segment* seg = msr->findSegment(SegmentType::EndBarLine, msr->tick() + msr->ticks());
-        EXPECT_TRUE(seg);
+        const Segment* seg = msr->findSegment(SegmentType::EndBarLine, msr->endTick());
+        ASSERT_TRUE(seg);
 
         // check only i-th staff has custom bar line type
-        for (int j=0; j < 3; j++) {
-            BarLine* bar = static_cast<BarLine*>(seg->element(j * VOICES));
-            EXPECT_TRUE(bar);
+        for (staff_idx_t staffIdx = 0; staffIdx < 3; staffIdx++) {
+            const BarLine* bar = toBarLine(seg->element(staff2track(staffIdx)));
+            ASSERT_TRUE(bar);
 
-            // if not the i-th staff, bar should be normal and not custom
-            if (j != i) {
+            if (staffIdx != i) {
+                // if not the i-th staff, bar should be normal and not custom
                 EXPECT_EQ(bar->barLineType(), BarLineType::NORMAL);
-            }
-            // in the i-th staff, the bar line should be of type DOUBLE and custom type should be true
-            else {
+            } else {
+                // in the i-th staff, the bar line should be of type DOUBLE and custom type should be true
                 EXPECT_EQ(bar->barLineType(), BarLineType::DOUBLE);
             }
         }
 
         msr = msr->nextMeasure();
     }
-
-    delete score;
 }
 
-//---------------------------------------------------------
-//   dropNormalBarline
-//   helper for barline179726()
-//---------------------------------------------------------
-
-void dropNormalBarline(EngravingItem* e)
-{
-    EditData dropData(0);
-    BarLine* barLine = Factory::createBarLine(e->score()->dummy()->segment());
-    barLine->setBarLineType(BarLineType::NORMAL);
-    dropData.dropElement = barLine;
-
-    e->score()->startCmd(TranslatableString::untranslatable("Drop normal barline test"));
-    e->drop(dropData);
-    e->score()->endCmd();
-}
-
-//---------------------------------------------------------
-//   barline179726
-//   Drop a normal barline onto measures and barlines of each type of barline
-//
-//    NO REFERENCE SCORE IS USED.
-//---------------------------------------------------------
+// Drop a normal barline onto measures and barlines of each type of barline
 TEST_F(Engraving_BarlineTests, barline179726)
 {
-    Score* score = ScoreRW::readScore(BARLINE_DATA_DIR + "barline179726.mscx");
-    EXPECT_TRUE(score);
+    const MutMasterScorePtr score = readMutScore("barline179726.mscx"sv);
+    ASSERT_TRUE(score);
 
-    score->doLayout();
+    const auto dropNormalBarline = [&](EngravingItem* e) {
+        BarLine* barLine = Factory::createBarLine(score->dummy()->segment());
+        barLine->setBarLineType(BarLineType::NORMAL);
+
+        EditData dropData{};
+        dropData.dropElement = barLine;
+        score->startCmd(TranslatableString::untranslatable("Drop normal barline test"));
+        e->drop(dropData);
+        score->endCmd();
+    };
 
     Measure* m = score->firstMeasure();
 
     // drop NORMAL onto initial START_REPEAT barline will remove that START_REPEAT
-    dropNormalBarline(m->findSegment(SegmentType::StartRepeatBarLine, m->tick())->elementAt(0));
-    EXPECT_EQ(m->findSegment(SegmentType::StartRepeatBarLine, Fraction(0, 1)), nullptr);
+    dropNormalBarline(m->findSegment(SegmentType::StartRepeatBarLine, m->tick())->elementAt(FIRST_TRACK_IDX));
+    EXPECT_EQ(m->findSegment(SegmentType::StartRepeatBarLine, m->tick()), nullptr);
 
     // drop NORMAL onto END_START_REPEAT will turn into NORMAL
-    dropNormalBarline(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(0));
-    BarLine* bar = static_cast<BarLine*>(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(0));
-    EXPECT_TRUE(bar);
+    dropNormalBarline(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(FIRST_TRACK_IDX));
+    const BarLine* bar = toBarLine(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(FIRST_TRACK_IDX));
+    ASSERT_TRUE(bar);
     EXPECT_EQ(bar->barLineType(), BarLineType::NORMAL);
 
     m = m->nextMeasure();
 
-    // drop NORMAL onto the END_REPEAT part of an END_START_REPEAT straddling a newline will turn into NORMAL at the end of this meas
-    dropNormalBarline(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(0));
-    bar = static_cast<BarLine*>(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(0));
-    EXPECT_TRUE(bar);
+    // drop NORMAL onto the END_REPEAT part of an END_START_REPEAT straddling a newline will turn into NORMAL
+    // at the end of this measure
+    dropNormalBarline(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(FIRST_TRACK_IDX));
+    bar = toBarLine(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(FIRST_TRACK_IDX));
+    ASSERT_TRUE(bar);
     EXPECT_EQ(bar->barLineType(), BarLineType::NORMAL);
 
     m = m->nextMeasure();
 
     // but leave START_REPEAT at the beginning of the newline
-    bar = static_cast<BarLine*>(m->findSegment(SegmentType::StartRepeatBarLine, m->tick())->elementAt(0));
+    bar = toBarLine(m->findSegment(SegmentType::StartRepeatBarLine, m->tick())->elementAt(FIRST_TRACK_IDX));
     EXPECT_TRUE(bar);
 
-    // drop NORMAL onto the meas ending with an END_START_REPEAT straddling a newline will turn into NORMAL at the end of this meas
-    // but note I'm not verifying what happens to the START_REPEAT at the beginning of the newline...I'm not sure that behavior is well-defined yet
+    // drop NORMAL onto the measure ending with an END_START_REPEAT straddling a newline will turn into NORMAL
+    // at the end of this measure
+    // TODO: but note I'm not verifying what happens to the START_REPEAT at the beginning of the newline...
+    // I'm not sure that behavior is well-defined yet
     dropNormalBarline(m);
-    bar = static_cast<BarLine*>(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(0));
-    EXPECT_TRUE(bar);
+    bar = toBarLine(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(FIRST_TRACK_IDX));
+    ASSERT_TRUE(bar);
     EXPECT_EQ(bar->barLineType(), BarLineType::NORMAL);
 
-    m = m->nextMeasure();
-    m = m->nextMeasure();
+    m = m->nextMeasure()->nextMeasure();
 
     // drop NORMAL onto the START_REPEAT part of an END_START_REPEAT straddling a newline will remove the START_REPEAT at the beginning of this measure
-    dropNormalBarline(m->findSegment(SegmentType::StartRepeatBarLine, m->tick())->elementAt(0));
+    dropNormalBarline(m->findSegment(SegmentType::StartRepeatBarLine, m->tick())->elementAt(FIRST_TRACK_IDX));
     EXPECT_EQ(m->findSegment(SegmentType::StartRepeatBarLine, m->tick()), nullptr);
 
     // but leave END_REPEAT at the end of previous line
-    bar = static_cast<BarLine*>(m->prevMeasure()->findSegment(SegmentType::EndBarLine, m->tick())->elementAt(0));
-    EXPECT_TRUE(bar);
+    bar = toBarLine(m->prevMeasure()->findSegment(SegmentType::EndBarLine, m->tick())->elementAt(FIRST_TRACK_IDX));
+    ASSERT_TRUE(bar);
     EXPECT_EQ(bar->barLineType(), BarLineType::END_REPEAT);
 
-    for (int i = 0; i < 4; i++, m = m->nextMeasure()) {
+    for (int i = 0; i < 4; i++) {
         // drop NORMAL onto END_REPEAT, BROKEN, DOTTED, DOUBLE at the end of this meas will turn into NORMAL
-        dropNormalBarline(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(0));
-        bar = static_cast<BarLine*>(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(0));
-        EXPECT_TRUE(bar);
+        dropNormalBarline(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(FIRST_TRACK_IDX));
+        bar = toBarLine(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(FIRST_TRACK_IDX));
+        ASSERT_TRUE(bar);
         EXPECT_EQ(bar->barLineType(), BarLineType::NORMAL);
+        m = m->nextMeasure();
     }
 
     m = m->nextMeasure();
 
     // drop NORMAL onto a START_REPEAT in middle of a line will remove the START_REPEAT at the beginning of this measure
-    dropNormalBarline(m->findSegment(SegmentType::StartRepeatBarLine, m->tick())->elementAt(0));
+    dropNormalBarline(m->findSegment(SegmentType::StartRepeatBarLine, m->tick())->elementAt(FIRST_TRACK_IDX));
     EXPECT_EQ(m->findSegment(SegmentType::StartRepeatBarLine, m->tick()), nullptr);
 
     // drop NORMAL onto final END_REPEAT at end of score will turn into NORMAL
-    dropNormalBarline(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(0));
-    bar = static_cast<BarLine*>(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(0));
-    EXPECT_TRUE(bar);
+    dropNormalBarline(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(FIRST_TRACK_IDX));
+    bar = toBarLine(m->findSegment(SegmentType::EndBarLine, m->endTick())->elementAt(FIRST_TRACK_IDX));
+    ASSERT_TRUE(bar);
     EXPECT_EQ(bar->barLineType(), BarLineType::NORMAL);
-
-    delete score;
 }
 
-//---------------------------------------------------------
-//   deleteSkipBarlines
-//---------------------------------------------------------
 TEST_F(Engraving_BarlineTests, deleteSkipBarlines)
 {
-    MasterScore* score = ScoreRW::readScore(BARLINE_DATA_DIR + "barlinedelete.mscx");
-    EXPECT_TRUE(score);
+    const MutMasterScorePtr score = readMutScore("barlinedelete.mscx"sv);
+    ASSERT_TRUE(score);
 
     Measure* m1 = score->firstMeasure();
-    EXPECT_TRUE(m1);
+    ASSERT_TRUE(m1);
 
     score->startCmd(TranslatableString::untranslatable("Engraving barline tests"));
     score->cmdSelectAll();
@@ -426,7 +380,7 @@ TEST_F(Engraving_BarlineTests, deleteSkipBarlines)
 
     score->doLayout();
 
-    EXPECT_TRUE(ScoreComp::saveCompareScore(score, String("barlinedelete.mscx"), BARLINE_DATA_DIR + String("barlinedelete-ref.mscx")));
-
-    delete score;
+    const std::string refFilePath = strings::concat(BARLINE_DATA_DIR, "/barlinedelete-ref.mscx"sv);
+    EXPECT_TRUE(ScoreComp::saveCompareScore(score.get(), u"barlinedelete.mscx", String::fromUtf8(refFilePath)));
+}
 }
