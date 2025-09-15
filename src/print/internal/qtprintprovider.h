@@ -19,19 +19,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef MU_PRINT_PRINTPROVIDER_H
-#define MU_PRINT_PRINTPROVIDER_H
+#pragma once
 
-#include "../iprintprovider.h"
+#include "print/iprintprovider.h"
 
 namespace mu::print {
-class PrintProvider : public IPrintProvider
+class QtPrintProvider : public IPrintProvider
 {
 public:
-    PrintProvider() = default;
+    QtPrintProvider() = default;
 
     muse::Ret printNotation(notation::INotationPtr notation) override;
 };
 }
-
-#endif // MU_PRINT_PRINTPROVIDER_H

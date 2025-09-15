@@ -19,14 +19,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef MU_PRINT_IPRINTPROVIDER_H
-#define MU_PRINT_IPRINTPROVIDER_H
+#pragma once
 
-#include <functional>
-#include <QSizeF>
+#include "global/types/ret.h"
 
 #include "modularity/imoduleinterface.h"
-#include "types/ret.h"
+
 #include "notation/inotation.h"
 
 namespace mu::print {
@@ -40,5 +38,3 @@ public:
     virtual muse::Ret printNotation(notation::INotationPtr notation) = 0;
 };
 }
-
-#endif // MU_PRINT_IPRINTPROVIDER_H

@@ -25,8 +25,8 @@ set(MODULE_SRC
     ${CMAKE_CURRENT_LIST_DIR}/printmodule.h
     ${CMAKE_CURRENT_LIST_DIR}/iprintprovider.h
 
-    ${CMAKE_CURRENT_LIST_DIR}/internal/printprovider.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/internal/printprovider.h
+    ${CMAKE_CURRENT_LIST_DIR}/internal/qtprintprovider.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/internal/qtprintprovider.h
     )
 
 if (QT_SUPPORT)
