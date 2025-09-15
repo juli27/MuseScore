@@ -1892,7 +1892,18 @@ void ProjectActionsController::printScore()
         return;
     }
 
-    printProvider()->printNotation(notation);
+    printProvider()->printNotation(notation).onResolve(this, [this](const Ret& ret) {
+        if (muse::check_ret(ret, Ret::Code::Ok)) {
+            return;
+        }
+        if (muse::check_ret(ret, Ret::Code::Cancel)) {
+            return;
+        }
+
+        LOGE() << "Failed to print score: " << ret.toString();
+        interactive()->error(muse::trc("project", "Your score could not be printed"),
+                             muse::trc("project", "An unknown error occurred while printing this score"));
+    });
 }
 
 async::Promise<io::path_t> ProjectActionsController::selectScoreOpeningFile() const

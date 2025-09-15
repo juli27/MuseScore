@@ -21,6 +21,8 @@
  */
 #include "qtprintprovider.h"
 
+#include <string>
+
 #include <QPrinter>
 #include <QPrintDialog>
 
@@ -31,54 +33,71 @@
 
 #include "log.h"
 
+using namespace std::literals;
 using namespace muse;
+using namespace muse::async;
 using namespace muse::draw;
 using namespace mu::notation;
 
 namespace mu::print {
-Ret QtPrintProvider::printNotation(INotationPtr notation)
+Promise<Ret> QtPrintProvider::printNotation(const INotationPtr notation)
 {
-    IF_ASSERT_FAILED(notation) {
-        return muse::make_ret(Ret::Code::InternalError);
-    }
+    return Promise<Ret>([&](const auto resolve) {
+        IF_ASSERT_FAILED(notation) {
+            return resolve(muse::make_ret(Ret::Code::InternalError, "can't print null notation"s));
+        }
 
-    const INotationPaintingPtr painting = notation->painting();
+        const INotationPaintingPtr painting = notation->painting();
 
-    SizeF pageSizeInch = painting->pageSizeInch();
-    QPrinter printerDev(QPrinter::HighResolution);
-    QPageSize ps(QPageSize::id(pageSizeInch.toQSizeF(), QPageSize::Inch));
-    printerDev.setPageSize(ps);
-    printerDev.setPageOrientation(pageSizeInch.width() > pageSizeInch.height() ? QPageLayout::Landscape : QPageLayout::Portrait);
+        SizeF pageSizeInch = painting->pageSizeInch();
+        auto printer = std::make_unique<QPrinter>(QPrinter::HighResolution);
+        QPageSize ps(QPageSize::id(pageSizeInch.toQSizeF(), QPageSize::Inch));
+        printer->setPageSize(ps);
+        printer->setPageOrientation(pageSizeInch.width() > pageSizeInch.height() ? QPageLayout::Landscape : QPageLayout::Portrait);
 
-    //printerDev.setCreator("MuseScore Studio Version: " VERSION);
-    printerDev.setFullPage(true);
-    if (!printerDev.setPageMargins(QMarginsF())) {
-        LOGD() << "unable to clear printer margins";
-    }
+        //printer->setCreator("MuseScore Studio Version: " VERSION);
+        printer->setFullPage(true);
+        if (!printer->setPageMargins(QMarginsF())) {
+            LOGW() << "unable to clear printer margins";
+        }
 
-    printerDev.setDocName(notation->projectWorkTitleAndPartName());
-    printerDev.setOutputFormat(QPrinter::NativeFormat);
-    printerDev.setFromTo(1, painting->pageCount());
+        printer->setDocName(notation->projectWorkTitleAndPartName());
+        printer->setOutputFormat(QPrinter::NativeFormat);
+        printer->setFromTo(1, painting->pageCount());
 
-    QPrintDialog pd(&printerDev, 0);
-    if (!pd.exec()) {
-        return muse::make_ret(Ret::Code::Cancel);
-    }
+        auto* printDialog = new QPrintDialog(printer.get());
 
-    Painter painter(&printerDev, "print");
+        QObject::connect(printDialog, &QPrintDialog::finished,
+                         [=, printer = std::move(printer)] (const int dlgCode) {
+            printDialog->deleteLater();
 
-    INotationPainting::Options opt;
-    opt.fromPage = printerDev.fromPage() - 1;
-    opt.toPage = printerDev.toPage() - 1;
-    // See https://doc.qt.io/qt-5/qprinter.html#supportsMultipleCopies
-    opt.copyCount = printerDev.supportsMultipleCopies() ? 1 : printerDev.copyCount();
-    opt.deviceDpi = printerDev.logicalDpiX();
-    opt.onNewPage = [&printerDev]() { printerDev.newPage(); };
+            if (dlgCode == QDialog::Rejected) {
+                (void)resolve(make_ret(Ret::Code::Cancel));
+                return;
+            }
 
-    painting->paintPrint(&painter, opt);
+            DO_ASSERT(dlgCode == QDialog::Accepted);
 
-    painter.endDraw();
+            Painter painter(printer.get(), "print");
 
-    return muse::make_ok();
+            INotationPainting::Options opt;
+            opt.fromPage = printer->fromPage() - 1;
+            opt.toPage = printer->toPage() - 1;
+            // See https://doc.qt.io/qt-5/qprinter.html#supportsMultipleCopies
+            opt.copyCount = printer->supportsMultipleCopies() ? 1 : printer->copyCount();
+            opt.deviceDpi = printer->logicalDpiX();
+            opt.onNewPage = [&]() { printer->newPage(); };
+
+            painting->paintPrint(&painter, opt);
+
+            painter.endDraw();
+
+            (void)resolve(muse::make_ok());
+        });
+
+        printDialog->open();
+
+        return Promise<Ret>::dummy_result();
+    }, PromiseType::AsyncByBody);
 }
 }

@@ -25,6 +25,7 @@
 #include <memory>
 
 #include "global/modularity/imoduleinterface.h"
+#include "global/async/promise.h"
 #include "global/types/ret.h"
 
 #include "notation/inotation.h"
@@ -40,6 +41,6 @@ class IPrintProvider : MODULE_EXPORT_INTERFACE
 public:
     virtual ~IPrintProvider() = default;
 
-    virtual muse::Ret printNotation(notation::INotationPtr notation) = 0;
+    virtual muse::async::Promise<muse::Ret> printNotation(notation::INotationPtr) = 0;
 };
 }
