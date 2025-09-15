@@ -69,9 +69,9 @@ static constexpr PropertyMetaData propertyList[] = {
     { Pid::HIDE_WHEN_EMPTY,         false, "hideWhenEmpty",         P_TYPE::AUTO_ON_OFF,        PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "hide when empty") },
     { Pid::HIDE_STAVES_WHEN_INDIVIDUALLY_EMPTY, false, "hideStavesWhenIndividuallyEmpty", P_TYPE::BOOL, PropertyGroup::APPEARANCE, DUMMY_QT_TR_NOOP("propertyName", "hide staves when individually empty") },
     { Pid::SHOW_IF_ENTIRE_SYSTEM_EMPTY, false, "showIfEntireSystemEmpty", P_TYPE::BOOL,         PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "show if entire system empty") },
-    { Pid::SHOW_COURTESY,           false, "showCourtesySig",       P_TYPE::INT,                PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "show courtesy") },
+    { Pid::SHOW_COURTESY,           false, "showCourtesySig",       P_TYPE::BOOL,               PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "show courtesy") },
     { Pid::KEYSIG_MODE,             false, "keysig_mode",           P_TYPE::KEY_MODE,           PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "key signature mode") },
-    { Pid::SLUR_STYLE_TYPE,         false, "lineType",              P_TYPE::INT,                PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "line type") },
+    { Pid::SLUR_STYLE_TYPE,         false, "lineType",              P_TYPE::SLUR_STYLE_TYPE,    PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "line type") },
     { Pid::PITCH,                   true,  "pitch",                 P_TYPE::INT,                PropertyGroup::NONE,            DUMMY_QT_TR_NOOP("propertyName", "pitch") },
 
     { Pid::TPC1,                    true,  "tpc",                   P_TYPE::INT,                PropertyGroup::NONE,            DUMMY_QT_TR_NOOP("propertyName", "tonal pitch class") },
@@ -80,7 +80,7 @@ static constexpr PropertyMetaData propertyList[] = {
     { Pid::FIXED,                   true,  "fixed",                 P_TYPE::BOOL,               PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "fixed") },
     { Pid::FIXED_LINE,              true,  "fixedLine",             P_TYPE::INT,                PropertyGroup::NONE      ,      DUMMY_QT_TR_NOOP("propertyName", "fixed line") },
     { Pid::HEAD_TYPE,               false, "headType",              P_TYPE::NOTEHEAD_TYPE,      PropertyGroup::APPEARANCE,          DUMMY_QT_TR_NOOP("propertyName", "head type") },
-    { Pid::HEAD_GROUP,              true,  "head",                   P_TYPE::NOTEHEAD_GROUP,     PropertyGroup::APPEARANCE,         DUMMY_QT_TR_NOOP("propertyName", "head") },
+    { Pid::HEAD_GROUP,              true,  "head",                  P_TYPE::NOTEHEAD_GROUP,     PropertyGroup::APPEARANCE,         DUMMY_QT_TR_NOOP("propertyName", "head") },
     { Pid::VELO_TYPE,               false, "veloType",              P_TYPE::VELO_TYPE,          PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "velocity type") },
     { Pid::USER_VELOCITY,           false, "velocity",              P_TYPE::INT,                PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "velocity") },
     { Pid::ARTICULATION_ANCHOR,     false, "anchor",                P_TYPE::INT,                PropertyGroup::POSITION,        DUMMY_QT_TR_NOOP("propertyName", "anchor") },
@@ -88,7 +88,7 @@ static constexpr PropertyMetaData propertyList[] = {
     { Pid::DIRECTION,               false, "direction",             P_TYPE::DIRECTION_V,        PropertyGroup::POSITION,        DUMMY_QT_TR_NOOP("propertyName", "direction") },
     { Pid::HORIZONTAL_DIRECTION,    false, "horizontalDirection",   P_TYPE::DIRECTION_H,        PropertyGroup::POSITION,        DUMMY_QT_TR_NOOP("propertyName", "horizontal direction") },
     { Pid::STEM_DIRECTION,          false, "StemDirection",         P_TYPE::DIRECTION_V,        PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "stem direction") },
-    { Pid::NO_STEM,                 false, "noStem",                P_TYPE::INT,                PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "no stem") },
+    { Pid::NO_STEM,                 false, "noStem",                P_TYPE::BOOL,               PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "no stem") },
     { Pid::SLUR_DIRECTION,          false, "up",                    P_TYPE::DIRECTION_V,        PropertyGroup::POSITION,        DUMMY_QT_TR_NOOP("propertyName", "up") },
     { Pid::LEADING_SPACE,           false, "leadingSpace",          P_TYPE::SPATIUM,            PropertyGroup::POSITION,        DUMMY_QT_TR_NOOP("propertyName", "leading space") },
     { Pid::MIRROR_HEAD,             false, "mirror",                P_TYPE::DIRECTION_H,        PropertyGroup::POSITION,        DUMMY_QT_TR_NOOP("propertyName", "mirror") },
@@ -140,7 +140,7 @@ static constexpr PropertyMetaData propertyList[] = {
     { Pid::IMAGE_HEIGHT,            false, "imageHeight",           P_TYPE::REAL,               PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "imageHeight") },
     { Pid::IMAGE_WIDTH,             false, "imageWidth",            P_TYPE::REAL,               PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "imageWidth") },
     { Pid::IMAGE_FRAMED,            false, "imageFramed",           P_TYPE::BOOL,               PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "imageFramed") },
-
+// continue here
     { Pid::FRET_FRAME_TEXT_SCALE,               false, "fretFrameTextScale",            P_TYPE::REAL,               PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "text scale") },
     { Pid::FRET_FRAME_DIAGRAM_SCALE,            false, "fretFrameDiagramScale",         P_TYPE::REAL,               PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "diagram scale") },
     { Pid::FRET_FRAME_COLUMN_GAP,               false, "fretFrameColumnGap",            P_TYPE::SPATIUM,            PropertyGroup::APPEARANCE,      DUMMY_QT_TR_NOOP("propertyName", "column gap") },

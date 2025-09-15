@@ -7696,7 +7696,7 @@ void Score::undoChangeTuning(Note* n, double v)
 
 void Score::undoChangeUserMirror(Note* n, DirectionH d)
 {
-    n->undoChangeProperty(Pid::MIRROR_HEAD, int(d));
+    n->undoChangeProperty(Pid::MIRROR_HEAD, d);
 }
 
 //---------------------------------------------------------
