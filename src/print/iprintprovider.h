@@ -21,10 +21,14 @@
  */
 #pragma once
 
-#include "global/types/ret.h"
+#include "global/async/promise.h"
 
 #include "modularity/imoduleinterface.h"
 
+#include <memory>
+
+#include "global/async/promise.h"
+#include "global/types/ret.h"
 #include "notation/inotation.h"
 
 namespace mu::print {
@@ -35,6 +39,6 @@ class IPrintProvider : MODULE_EXPORT_INTERFACE
 public:
     virtual ~IPrintProvider() = default;
 
-    virtual muse::Ret printNotation(notation::INotationPtr notation) = 0;
+    virtual muse::async::Promise<muse::Ret> printNotation(notation::INotationPtr) = 0;
 };
 }

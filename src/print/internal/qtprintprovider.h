@@ -29,6 +29,6 @@ class QtPrintProvider : public IPrintProvider
 public:
     QtPrintProvider() = default;
 
-    muse::Ret printNotation(notation::INotationPtr notation) override;
+    muse::async::Promise<muse::Ret> printNotation(notation::INotationPtr) override;
 };
 }
