@@ -21,15 +21,32 @@
  */
 #include "printmodule.h"
 
+#include <QtEnvironmentVariables>
+
 #include "modularity/ioc.h"
 
 #include "internal/qtprintprovider.h"
 
+#ifdef Q_OS_WIN
+#include "internal/platform/win/windowsprintprovider.h"
+#endif
+
+#include "log.h"
+
 namespace mu::print {
 namespace {
-IPrintProvider* makePrintProvider()
+IPrintProviderPtr makePrintProvider([[maybe_unused]] const muse::modularity::ContextPtr& ctx)
 {
-    return new QtPrintProvider();
+#ifdef Q_OS_WIN
+    if (!qEnvironmentVariableIsSet("MUSESCORE_FORCE_QTPRINTPROVIDER")
+        && WindowsPrintProvider::isAvailable()) {
+        return std::make_shared<WindowsPrintProvider>(ctx);
+    }
+
+    LOGI() << "Falling back to QtPrintProvider";
+#endif
+
+    return std::make_shared<QtPrintProvider>();
 }
 }
 
@@ -40,6 +57,6 @@ std::string PrintModule::moduleName() const
 
 void PrintModule::registerExports()
 {
-    ioc()->registerExport<IPrintProvider>(moduleName(), makePrintProvider());
+    ioc()->registerExport<IPrintProvider>(moduleName(), makePrintProvider(iocContext()));
 }
 }

@@ -5,7 +5,7 @@
  * MuseScore Studio
  * Music Composition & Notation
  *
- * Copyright (C) 2021 MuseScore Limited
+ * Copyright (C) 2025 MuseScore Limited
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 3 as
@@ -21,25 +21,21 @@
  */
 #pragma once
 
-#include "modularity/imoduleinterface.h"
+#include "print/iprintprovider.h"
+#include "modularity/ioc.h"
 
-#include <memory>
-
-#include "global/async/promise.h"
-#include "global/types/ret.h"
-#include "notation/inotation.h"
+#include "ui/imainwindow.h"
 
 namespace mu::print {
-class IPrintProvider;
-using IPrintProviderPtr = std::shared_ptr<IPrintProvider>;
-
-class IPrintProvider : MODULE_EXPORT_INTERFACE
+class WindowsPrintProvider : public IPrintProvider, public muse::Injectable
 {
-    INTERFACE_ID(IPrintProvider)
+    muse::Inject<muse::ui::IMainWindow> mainWindow { this };
 
 public:
-    virtual ~IPrintProvider() = default;
+    static bool isAvailable();
 
-    virtual muse::async::Promise<muse::Ret> printNotation(notation::INotationPtr) = 0;
+    explicit WindowsPrintProvider(const muse::modularity::ContextPtr&);
+
+    muse::async::Promise<muse::Ret> printNotation(notation::INotationPtr) override;
 };
 }

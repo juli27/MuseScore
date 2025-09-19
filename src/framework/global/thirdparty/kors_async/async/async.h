@@ -33,9 +33,9 @@ class Async
 public:
 
     template<typename F>
-    static void call(const Asyncable* caller, F f, const std::thread::id& th = std::this_thread::get_id())
+    static void call(const Asyncable* caller, F&& f, const std::thread::id& th = std::this_thread::get_id())
     {
-        AsyncImpl::instance()->call(const_cast<Asyncable*>(caller), new AsyncImpl::Functor<F>(f), th);
+        AsyncImpl::instance()->call(const_cast<Asyncable*>(caller), new AsyncImpl::Functor<F>(std::forward<F>(f)), th);
     }
 
     template<typename F, typename Arg1>

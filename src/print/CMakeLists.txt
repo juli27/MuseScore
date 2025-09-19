@@ -29,6 +29,15 @@ set(MODULE_SRC
     ${CMAKE_CURRENT_LIST_DIR}/internal/qtprintprovider.h
     )
 
+if(OS_IS_WIN)
+    list(APPEND MODULE_SRC
+        ${CMAKE_CURRENT_LIST_DIR}/internal/platform/win/windowsprintprovider.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/internal/platform/win/windowsprintprovider.h
+    )
+
+    list(APPEND MODULE_LINK "WindowsApp" "d2d1" "d3d11")
+endif()
+
 if (QT_SUPPORT)
     list(APPEND MODULE_LINK Qt::PrintSupport)
 endif()

@@ -46,8 +46,8 @@ public:
     template<typename F>
     struct Functor : public IFunction {
         F functor;
-        Functor(const F fn)
-            : functor(fn) {}
+        Functor(F&& fn)
+            : functor(std::forward<F>(fn)) {}
         void call() { functor(); }
     };
 
