@@ -307,8 +307,8 @@ double Autoplace::rebaseOffset(const EngravingItem* item, EngravingItem::LayoutD
             if (pf == PropertyFlags::STYLED) {
                 pf = PropertyFlags::UNSTYLED;
             }
-            PlacementV place = above ? PlacementV::BELOW : PlacementV::ABOVE;
-            const_cast<EngravingItem*>(e)->undoChangeProperty(Pid::PLACEMENT, int(place), pf);
+            const PlacementV place = above ? PlacementV::BELOW : PlacementV::ABOVE;
+            const_cast<EngravingItem*>(e)->undoChangeProperty(Pid::PLACEMENT, place, pf);
             const_cast<EngravingItem*>(item)->undoResetProperty(Pid::MIN_DISTANCE);
             return 0.0;
         }

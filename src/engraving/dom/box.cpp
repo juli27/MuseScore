@@ -835,7 +835,7 @@ PropertyValue FBox::getProperty(Pid propertyId) const
     case Pid::FRET_FRAME_CHORDS_PER_ROW:
         return m_chordsPerRow;
     case Pid::FRET_FRAME_H_ALIGN:
-        return static_cast<int>(m_contentAlignmentH);
+        return m_contentAlignmentH;
     case Pid::LEFT_MARGIN:
         return m_contentAlignmentH == AlignH::LEFT ? VBox::getProperty(propertyId) : PropertyValue();
     case Pid::RIGHT_MARGIN:
@@ -866,7 +866,7 @@ bool FBox::setProperty(Pid propertyId, const PropertyValue& val)
         m_chordsPerRow = val.toInt();
         break;
     case Pid::FRET_FRAME_H_ALIGN:
-        m_contentAlignmentH = static_cast<AlignH>(val.toInt());
+        m_contentAlignmentH = val.value<AlignH>();
         resetProperty(Pid::LEFT_MARGIN);
         resetProperty(Pid::RIGHT_MARGIN);
         break;
@@ -893,7 +893,7 @@ PropertyValue FBox::propertyDefault(Pid propertyId) const
     case Pid::FRET_FRAME_CHORDS_PER_ROW:
         return 8;
     case Pid::FRET_FRAME_H_ALIGN:
-        return static_cast<int>(AlignH::HCENTER);
+        return AlignH::HCENTER;
     case Pid::FRET_FRAME_DIAGRAMS_ORDER:
         return m_diagramsOrderInScore.join(FRET_BOX_DIAGRAMS_SEPARATOR);
     case Pid::EXCLUDE_FROM_OTHER_PARTS:

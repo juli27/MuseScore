@@ -231,7 +231,7 @@ PropertyValue Vibrato::propertyDefault(Pid propertyId) const
 {
     switch (propertyId) {
     case Pid::VIBRATO_TYPE:
-        return 0;
+        return static_cast<int>(VibratoType::GUITAR_VIBRATO);
     case Pid::PLACEMENT:
         return style().styleV(Sid::vibratoPlacement);
     default:
