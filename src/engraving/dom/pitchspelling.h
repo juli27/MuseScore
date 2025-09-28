@@ -65,6 +65,9 @@ const int TPCS_PER_STEP           = (Tpc::TPC_MAX - Tpc::TPC_MIN + 1) / STEP_DEL
 
 // pitch2tpc(pitch) replaced by pitch2tpc(pitch, Key::C, Prefer::NEAREST)
 
+TranslatableString getTranslatableTpcName(const int tpc);
+TranslatableString getTranslatablePitchName(int pitch, const int tpc);
+
 enum class Prefer : char {
     FLATS=8, NEAREST=11, SHARPS=13
 };
@@ -103,12 +106,12 @@ extern int convertNote(const String& s, NoteSpellingType noteSpelling, NoteCaseT
 //   tpc2alter
 //---------------------------------------------------------
 
-inline static AccidentalVal tpc2alter(int tpc)
+inline AccidentalVal tpc2alter(int tpc)
 {
     return AccidentalVal(((tpc - Tpc::TPC_MIN) / TPC_DELTA_SEMITONE) + int(AccidentalVal::MIN));
 }
 
-inline static int playingOctave(int pitch, int tpc)
+inline int playingOctave(int pitch, int tpc)
 {
     return ((pitch - static_cast<int>(tpc2alter(tpc))) / PITCH_DELTA_OCTAVE) - 1;
 }

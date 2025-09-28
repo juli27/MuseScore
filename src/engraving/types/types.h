@@ -230,6 +230,7 @@ using ElementTypeSet = std::unordered_set<ElementType>;
 // --- Common ---
 using String = muse::String;
 using StringList = muse::StringList;
+using TranslatableLiteral = muse::TranslatableLiteral;
 using TranslatableString = muse::TranslatableString;
 using Char = muse::Char;
 using AsciiStringView = muse::AsciiStringView;

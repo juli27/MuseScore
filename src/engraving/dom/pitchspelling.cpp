@@ -252,6 +252,97 @@ int tpc2alterByKey(int tpc, Key key)
     return (tpc - int(key) - int(Tpc::TPC_MIN) + int(Key::MAX)) / TPC_DELTA_SEMITONE - (int(AccidentalVal::MAX) + 1);
 }
 
+static constexpr std::array TPC_NAMES {
+    TranslatableLiteral("engraving", "F𝄫♭"),
+    TranslatableLiteral("engraving", "C𝄫♭"),
+    TranslatableLiteral("engraving", "G𝄫♭"),
+    TranslatableLiteral("engraving", "D𝄫♭"),
+    TranslatableLiteral("engraving", "A𝄫♭"),
+    TranslatableLiteral("engraving", "E𝄫♭"),
+    TranslatableLiteral("engraving", "B𝄫♭"),
+    TranslatableLiteral("engraving", "F𝄫"),
+    TranslatableLiteral("engraving", "C𝄫"),
+    TranslatableLiteral("engraving", "G𝄫"),
+    TranslatableLiteral("engraving", "D𝄫"),
+    TranslatableLiteral("engraving", "A𝄫"),
+    TranslatableLiteral("engraving", "E𝄫"),
+    TranslatableLiteral("engraving", "B𝄫"),
+    TranslatableLiteral("engraving", "F♭"),
+    TranslatableLiteral("engraving", "C♭"),
+    TranslatableLiteral("engraving", "G♭"),
+    TranslatableLiteral("engraving", "D♭"),
+    TranslatableLiteral("engraving", "A♭"),
+    TranslatableLiteral("engraving", "E♭"),
+    TranslatableLiteral("engraving", "B♭"),
+    TranslatableLiteral("engraving", "F"),
+    TranslatableLiteral("engraving", "C"),
+    TranslatableLiteral("engraving", "G"),
+    TranslatableLiteral("engraving", "D"),
+    TranslatableLiteral("engraving", "A"),
+    TranslatableLiteral("engraving", "E"),
+    TranslatableLiteral("engraving", "B"),
+    TranslatableLiteral("engraving", "F♯"),
+    TranslatableLiteral("engraving", "C♯"),
+    TranslatableLiteral("engraving", "G♯"),
+    TranslatableLiteral("engraving", "D♯"),
+    TranslatableLiteral("engraving", "A♯"),
+    TranslatableLiteral("engraving", "E♯"),
+    TranslatableLiteral("engraving", "B♯"),
+    TranslatableLiteral("engraving", "F𝄪"),
+    TranslatableLiteral("engraving", "C𝄪"),
+    TranslatableLiteral("engraving", "G𝄪"),
+    TranslatableLiteral("engraving", "D𝄪"),
+    TranslatableLiteral("engraving", "A𝄪"),
+    TranslatableLiteral("engraving", "E𝄪"),
+    TranslatableLiteral("engraving", "B𝄪"),
+    TranslatableLiteral("engraving", "F𝄪♯"),
+    TranslatableLiteral("engraving", "C𝄪♯"),
+    TranslatableLiteral("engraving", "G𝄪♯"),
+    TranslatableLiteral("engraving", "D𝄪♯"),
+    TranslatableLiteral("engraving", "A𝄪♯"),
+    TranslatableLiteral("engraving", "E𝄪♯"),
+    TranslatableLiteral("engraving", "B𝄪♯"),
+};
+
+TranslatableString getTranslatableTpcName(const int tpc)
+{
+    IF_ASSERT_FAILED(TPC_MIN <= tpc && tpc <= TPC_MAX) {
+        return TranslatableString();
+    }
+
+    const std::size_t index = tpc - TPC_MIN;
+
+    return TranslatableString(TPC_NAMES[index]);
+}
+
+static constexpr std::array OCTAVE_DESIGNATIONS {
+    TranslatableLiteral("engraving", "%1-1"),
+    TranslatableLiteral("engraving", "%10"),
+    TranslatableLiteral("engraving", "%11"),
+    TranslatableLiteral("engraving", "%12"),
+    TranslatableLiteral("engraving", "%13"),
+    TranslatableLiteral("engraving", "%14"),
+    TranslatableLiteral("engraving", "%15"),
+    TranslatableLiteral("engraving", "%16"),
+    TranslatableLiteral("engraving", "%17"),
+    TranslatableLiteral("engraving", "%18"),
+    TranslatableLiteral("engraving", "%19"),
+};
+
+TranslatableString getTranslatablePitchName(const int pitch, const int tpc)
+{
+    IF_ASSERT_FAILED(0 <= pitch && pitch <= 127) {
+        return TranslatableString();
+    }
+
+    // TODO: is this correct?
+    const int octave = playingOctave(pitch, tpc);
+    const auto octaveIdx = static_cast<std::size_t>(octave + 1);
+
+    return TranslatableString(OCTAVE_DESIGNATIONS[octaveIdx])
+           .arg(getTranslatableTpcName(tpc));
+}
+
 //---------------------------------------------------------
 //   tpc2name
 //    return note name

@@ -42,6 +42,7 @@ DEFAULT_LUPDATE_ARGS=(
     -tr-function-alias translate+=mtrc
     -tr-function-alias translate+=qtrc
     -tr-function-alias translate+=TranslatableString
+    -tr-function-alias translate+=TranslatableLiteral
     -tr-function-alias qsTranslate+=qsTrc
     -tr-function-alias QT_TRANSLATE_NOOP+=QT_TRANSLATE_NOOP_U16
     -extensions cpp,h,mm,ui,qml,js

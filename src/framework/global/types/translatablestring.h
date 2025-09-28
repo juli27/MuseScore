@@ -19,18 +19,39 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef MUSE_GLOBAL_TRANSLATABLESTRING_H
-#define MUSE_GLOBAL_TRANSLATABLESTRING_H
+#pragma once
 
-#include "translation.h"
+#include "global/translation.h"
 
-#include "types/string.h"
+#include "string.h"
 
 #ifndef NO_QT_SUPPORT
 #include <QString>
 #endif
 
 namespace muse {
+// Context preserving replacement for the QT_*_NOOP macros.
+//! Note: in order to make the string visible for `lupdate`,
+//! you must write TranslatableLiteral(...) explicitly.
+class TranslatableLiteral
+{
+public:
+    constexpr TranslatableLiteral(const char* context, const char* sourceText, const char* disambiguation = nullptr,
+                                  int defaultN = -1)
+        : m_context{context}, m_sourceText{sourceText}, m_disambiguation{disambiguation}, m_defaultN{defaultN} {}
+
+    constexpr const char* context() const { return m_context; }
+    constexpr const char* sourceText() const { return m_sourceText; }
+    constexpr const char* disambiguation() const { return m_disambiguation; }
+    constexpr int defaultN() const { return m_defaultN; }
+
+private:
+    const char* m_context = nullptr;
+    const char* m_sourceText = nullptr;
+    const char* m_disambiguation = nullptr;
+    int m_defaultN = -1;
+};
+
 //! Note: in order to make the string visible for `lupdate`,
 //! you must write TranslatableString(...) explicitly.
 class TranslatableString
@@ -42,6 +63,8 @@ public:
     int defaultN = -1;
 
     TranslatableString() = default;
+    /* implicit */ TranslatableString(const TranslatableLiteral& literal)
+        : TranslatableString(literal.context(), literal.sourceText(), literal.disambiguation(), literal.defaultN()) {}
     TranslatableString(const char* context, const char* str, const char* disambiguation = nullptr, int n = -1)
         : context(context), str(String::fromUtf8(str)), disambiguation(disambiguation), defaultN(n) {}
     TranslatableString(const char* context, const String& str, const char* disambiguation = nullptr, int n = -1)
@@ -265,5 +288,3 @@ TranslatableString TranslatableString::arg(const Args& ... args) const
     return res;
 }
 }
-
-#endif // MUSE_GLOBAL_TRANSLATABLESTRING_H
