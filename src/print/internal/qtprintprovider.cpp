@@ -19,26 +19,30 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include "printprovider.h"
+#include "qtprintprovider.h"
 
 #include <QPrinter>
 #include <QPrintDialog>
 
+#include "draw/painter.h"
+
+#include "notation/inotation.h"
+#include "notation/inotationpainting.h"
+
 #include "log.h"
 
-using namespace mu;
-using namespace mu::print;
 using namespace muse;
 using namespace muse::draw;
 using namespace mu::notation;
 
-Ret PrintProvider::printNotation(INotationPtr notation)
+namespace mu::print {
+Ret QtPrintProvider::printNotation(INotationPtr notation)
 {
     IF_ASSERT_FAILED(notation) {
-        return make_ret(Ret::Code::InternalError);
+        return muse::make_ret(Ret::Code::InternalError);
     }
 
-    auto painting = notation->painting();
+    const INotationPaintingPtr painting = notation->painting();
 
     SizeF pageSizeInch = painting->pageSizeInch();
     QPrinter printerDev(QPrinter::HighResolution);
@@ -76,4 +80,5 @@ Ret PrintProvider::printNotation(INotationPtr notation)
     painter.endDraw();
 
     return muse::make_ok();
+}
 }

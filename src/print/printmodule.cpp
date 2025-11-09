@@ -21,13 +21,11 @@
  */
 #include "printmodule.h"
 
-#include "modularity/ioc.h"
+#include "global/modularity/ioc.h"
 
-#include "internal/printprovider.h"
+#include "internal/qtprintprovider.h"
 
-using namespace mu::print;
-using namespace muse::modularity;
-
+namespace mu::print {
 std::string PrintModule::moduleName() const
 {
     return "print";
@@ -35,5 +33,6 @@ std::string PrintModule::moduleName() const
 
 void PrintModule::registerExports()
 {
-    ioc()->registerExport<IPrintProvider>(moduleName(), new PrintProvider());
+    ioc()->registerExport<IPrintProvider>(moduleName(), std::make_shared<QtPrintProvider>());
+}
 }

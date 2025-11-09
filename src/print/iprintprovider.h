@@ -19,17 +19,20 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef MU_PRINT_IPRINTPROVIDER_H
-#define MU_PRINT_IPRINTPROVIDER_H
 
-#include <functional>
-#include <QSizeF>
+#pragma once
 
-#include "modularity/imoduleinterface.h"
-#include "types/ret.h"
+#include <memory>
+
+#include "global/modularity/imoduleinterface.h"
+#include "global/types/ret.h"
+
 #include "notation/inotation.h"
 
 namespace mu::print {
+class IPrintProvider;
+using IPrintProviderPtr = std::shared_ptr<IPrintProvider>;
+
 class IPrintProvider : MODULE_EXPORT_INTERFACE
 {
     INTERFACE_ID(IPrintProvider)
@@ -40,5 +43,3 @@ public:
     virtual muse::Ret printNotation(notation::INotationPtr notation) = 0;
 };
 }
-
-#endif // MU_PRINT_IPRINTPROVIDER_H
