@@ -24,6 +24,7 @@
 
 #include <cstdint>
 #include <stack>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -258,6 +259,45 @@ void serializeMetaEventData(const uint8_t* data, const int len, YamlStreamWriter
     yamlOut.mapToScalar("data", metaData.toBase64().toStdString());
 }
 
+std::string makeEscapedString(const uint8_t* data, const int len)
+{
+    std::string str;
+    str += '\"';
+
+    for (int i = 0; i < len; ++i) {
+        const auto c = static_cast<char>(data[i]);
+        switch (c) {
+        case '\0':
+            str += "\\0";
+            break;
+        case '\a':
+            str += "\\a";
+            break;
+        case '\b':
+            str += "\\b";
+        default:
+            str += c;
+            break;
+        }
+    }
+
+    str += '\"';
+
+    return str;
+}
+
+void serializeMetaEvent(const int metaType, const std::uint8_t* data, const int len, YamlStreamWriter& yamlOut)
+{
+    switch (metaType) {
+    case engraving::META_TRACK_NAME:
+        yamlOut.mapToScalar("name", makeEscapedString(data, len));
+        break;
+    default:
+        serializeMetaEventData(data, len, yamlOut);
+        break;
+    }
+}
+
 void serializeEvent(const MidiEvent& event, YamlStreamWriter& yamlOut)
 {
     yamlOut.mapToScalar("type", getEventTypeName(event.type()));
@@ -285,7 +325,7 @@ void serializeEvent(const MidiEvent& event, YamlStreamWriter& yamlOut)
         yamlOut.mapToScalar("pressure", event.dataA());
         break;
     case engraving::ME_META:
-        serializeMetaEventData(event.edata(), event.len(), yamlOut);
+        serializeMetaEvent(event.metaType(), event.edata(), event.len(), yamlOut);
         break;
     default:
         yamlOut.mapToScalar("data1", event.dataA());

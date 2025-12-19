@@ -36,7 +36,6 @@
 #include "engraving/compat/midi/compatmidirender.h"
 #include "engraving/compat/midi/compatmidirenderinternal.h"
 #include "engraving/dom/masterscore.h"
-#include "engraving/dom/mcursor.h"
 #include "engraving/types/types.h"
 
 #include "engraving/tests/utils/scorecomp.h"
@@ -85,8 +84,7 @@ static void exportAndCompareWithRef(const std::string& name)
 
     const std::string midiRefFileName = name + "-ref.mid";
     const String midiRefPath = ScoreRW::rootPath() + u'/' + MIDI_EXPORT_DATA_DIR + u'/' + String::fromUtf8(midiRefFileName);
-    if (ScoreComp::compareFiles(String::fromUtf8(midiFileName),
-                                midiRefPath)) {
+    if (ScoreComp::compareFiles(midiRefPath, String::fromUtf8(midiFileName))) {
         return;
     }
 
@@ -96,7 +94,7 @@ static void exportAndCompareWithRef(const std::string& name)
     const std::string yamlRefFileName = name + "-ref.yaml";
     serializeToYaml(midiRefPath.toStdString(), yamlRefFileName);
 
-    ScoreComp::compareFiles(String::fromUtf8(yamlFileName), String::fromUtf8(yamlRefFileName));
+    ScoreComp::compareFiles(String::fromUtf8(yamlRefFileName), String::fromUtf8(yamlFileName));
 
     FAIL() << "midi files differ";
 }
@@ -161,18 +159,6 @@ protected:
         testMidiExport(score, writeFile.arg(u"undo-remove-tempo"), reference.arg(scoreTempo));
     }
 
-    static void midiExportTestRef(const String& file)
-    {
-        MScore::debugMode = true;
-        std::unique_ptr<MasterScore> score { ScoreRW::readScore(MIDI_EXPORT_DATA_DIR + u"/" + file + u".mscx") };
-        ASSERT_TRUE(score);
-
-        score->doLayout();
-        score->rebuildMidiMapping();
-
-        testMidiExport(score.get(), file + u".mid", MIDI_EXPORT_DATA_DIR + u"/" + file + "-ref.mid");
-    }
-
     static void testMidiExport(MasterScore* score, const String& writeFile, const String& refFile)
     {
         ASSERT_PRED2(saveMidi, score, writeFile.toStdString());
@@ -197,52 +183,48 @@ TEST_F(MidiExportTests, midi03) {
 
 //! FIXME: update ref
 TEST_F(MidiExportTests, DISABLED_midiBendsExport1) {
-    midiExportTestRef(u"testBends1");
+    exportAndCompareWithRef("testBends1");
 }
 
 //! FIXME: update ref
 TEST_F(MidiExportTests, DISABLED_midiBendsExport2) {
-    midiExportTestRef(u"testBends2");
+    exportAndCompareWithRef("testBends2");
 }
 
-//! FIXME: update ref
-TEST_F(MidiExportTests, DISABLED_midiPortExport) {
-    midiExportTestRef(u"testMidiPort");
+TEST_F(MidiExportTests, midiPortExport) {
+    exportAndCompareWithRef("testMidiPort");
 }
 
-//! FIXME: update ref
-TEST_F(MidiExportTests, DISABLED_midiArpeggio) {
-    midiExportTestRef(u"testArpeggio");
+TEST_F(MidiExportTests, midiArpeggio) {
+    exportAndCompareWithRef("testArpeggio");
 }
 
 //! FIXME: update ref
 TEST_F(MidiExportTests, DISABLED_midiMutedUnison) {
-    midiExportTestRef(u"testMutedUnison");
+    exportAndCompareWithRef("testMutedUnison");
 }
 
-//! FIXME: update ref
-TEST_F(MidiExportTests, DISABLED_midiMeasureRepeats) {
-    midiExportTestRef(u"testMeasureRepeats");
+TEST_F(MidiExportTests, midiMeasureRepeats) {
+    exportAndCompareWithRef("testMeasureRepeats");
 }
 
-//! FIXME: update ref
-TEST_F(MidiExportTests, DISABLED_midi184376ExportMidiInitialKeySi) {
+TEST_F(MidiExportTests, midi184376ExportMidiInitialKeySi) {
     // tick 0 has Bb keysig.  Meas 2 has no key sig. Meas 2 repeats back to start of Meas 2.  Result should have initial Bb keysig
-    midiExportTestRef(u"testInitialKeySigThenRepeatToMeas2");
+    exportAndCompareWithRef("testInitialKeySigThenRepeatToMeas2");
     // 5 measures, with a key sig on every measure. Meas 3-4 are repeated.
-    midiExportTestRef(u"testRepeatsWithKeySigs");
+    exportAndCompareWithRef("testRepeatsWithKeySigs");
     // 5 measures, with a key sig on every measure except meas 0.  Meas 3-4 are repeated.
-    midiExportTestRef(u"testRepeatsWithKeySigsExceptFirstMeas");
+    exportAndCompareWithRef("testRepeatsWithKeySigsExceptFirstMeas");
 }
 
 //! FIXME: update ref
 TEST_F(MidiExportTests, DISABLED_midiVolta) {
     // test changing temp in prima and seconda volta
-    midiExportTestRef(u"testVoltaTemp");
+    exportAndCompareWithRef("testVoltaTemp");
     // test changing Dynamic in prima and seconda volta
-    midiExportTestRef(u"testVoltaDynamic");
+    exportAndCompareWithRef("testVoltaDynamic");
     // test changing StaffText in prima and seconda volta
-    midiExportTestRef(u"testVoltaStaffText");
+    exportAndCompareWithRef("testVoltaStaffText");
 }
 
 //! FIXME: update ref
