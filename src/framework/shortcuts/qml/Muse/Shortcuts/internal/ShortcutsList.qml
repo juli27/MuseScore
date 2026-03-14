@@ -42,22 +42,29 @@ ValueList {
 
     signal startEditCurrentShortcutRequested()
 
-    model: SortFilterProxyModel {
-        id: filterModel
-        sourceModel: root.sourceModel
+    // model: SortFilterProxyModel {
+    //     id: filterModel
+    //     sourceModel: root.sourceModel
 
-        filters: [
-            FilterValue {
-                roleName: "searchKey"
-                roleValue: root.searchText
-                compareType: CompareType.Contains
-            },
-            FilterValue {
-                roleName: "title"
-                roleValue: ""
-                compareType: CompareType.NotEqual
-            }
-        ]
+    //     filters: [
+    //         FilterValue {
+    //             roleName: "searchKey"
+    //             roleValue: root.searchText
+    //             compareType: CompareType.Contains
+    //         },
+    //         FilterValue {
+    //             roleName: "title"
+    //             roleValue: ""
+    //             compareType: CompareType.NotEqual
+    //         }
+    //     ]
+    // }
+    model: FuzzySortFilterProxyModel {
+        id: filterModel
+
+        fuzzyPattern: root.searchText
+        sourceModel: root.sourceModel
+        filterRole: 257
     }
 
     onHandleItem: {
