@@ -26,7 +26,7 @@ df -h .
 
 BUILD_TOOLS=$HOME/build_tools
 ENV_FILE=$BUILD_TOOLS/environment.sh
-PACKARCH="x86_64" # x86_64, armv7l, aarch64, wasm
+PACKARCH="x86_64" # x86_64, aarch64, wasm
 COMPILER="gcc" # gcc, clang
 EMSDK_VERSION="4.0.7" # for Qt 6.10
 BUILD_PIPEWIRE=false
@@ -47,13 +47,6 @@ mkdir -p $BUILD_TOOLS
 rm -f $ENV_FILE
 
 echo "echo 'Setup MuseScore build environment'" >> $ENV_FILE
-
-if [[ "$PACKARCH" == "armv7l" ]]; then
-  SUDO=""
-  export DEBIAN_FRONTEND="noninteractive" TZ="Europe/London"
-else
-  SUDO="sudo"
-fi
 
 ##########################################################################
 # GET DEPENDENCIES
@@ -93,7 +86,7 @@ if $BUILD_PIPEWIRE ; then
     )
 fi
 
-$SUDO apt-get install -y --no-install-recommends \
+sudo apt-get install -y --no-install-recommends \
   "${apt_packages_tools[@]}" \
   "${apt_packages_deps[@]}" \
   "${apt_packages_ffmpeg[@]}"
@@ -106,8 +99,8 @@ $SUDO apt-get install -y --no-install-recommends \
 if [ "$COMPILER" == "gcc" ]; then
 
   gcc_version="10"
-  $SUDO apt-get install -y --no-install-recommends "g++-${gcc_version}"
-  $SUDO update-alternatives \
+  sudo apt-get install -y --no-install-recommends "g++-${gcc_version}"
+  sudo update-alternatives \
     --install /usr/bin/gcc gcc "/usr/bin/gcc-${gcc_version}" 40 \
     --slave /usr/bin/g++ g++ "/usr/bin/g++-${gcc_version}"
 
@@ -119,7 +112,7 @@ if [ "$COMPILER" == "gcc" ]; then
 
 elif [ "$COMPILER" == "clang" ]; then
 
-  $SUDO apt-get install clang
+  sudo apt-get install clang
   echo export CC="/usr/bin/clang" >> ${ENV_FILE}
   echo export CXX="/usr/bin/clang++" >> ${ENV_FILE}
 
@@ -131,16 +124,10 @@ else
 fi
 
 # CMake
-if [[ "$PACKARCH" == "armv7l" ]]; then
-  $SUDO apt-get install -y --no-install-recommends cmake
-fi
 echo "cmake version"
 cmake --version
 
 # Ninja
-if [[ "$PACKARCH" == "armv7l" ]]; then
-  $SUDO apt-get install -y --no-install-recommends ninja-build
-fi
 echo "ninja version"
 ninja --version
 
@@ -156,11 +143,6 @@ if [[ "$PACKARCH" == "wasm" ]]; then
   cd $origin_dir
 fi
 
-# Python3-pip
-if [[ "$PACKARCH" == "armv7l" ]]; then
-  $SUDO apt-get install -y --no-install-recommends python3-pip
-fi
-
 ##########################################################################
 # BUILD PIPWIRE
 ##########################################################################
@@ -169,7 +151,7 @@ if $BUILD_PIPEWIRE ; then
   # MESON
   # Get recent version of Meson (to build pipewire)
   meson_version="1.1.1"
-  $SUDO python3 -m pip install meson==${meson_version}
+  sudo python3 -m pip install meson==${meson_version}
 
   pw_version="1.0.4"
   pw_src_dir="$BUILD_TOOLS/pw-src-${pw_version}"

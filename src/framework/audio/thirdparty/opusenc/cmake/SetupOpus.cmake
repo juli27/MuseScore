@@ -41,11 +41,6 @@ endif ()
 set(OPUS_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../opus/opus-1.5.2)
 add_subdirectory(${OPUS_LIB_DIR} opus)
 
-include(GetPlatformInfo)
-if (ARCH_IS_ARMV7L)
-    target_compile_options(opus PUBLIC -mfpu=neon)
-endif()
-
 set(OPUS_INCLUDE_DIRS ${OPUS_LIB_DIR}/include)
 set(OPUS_LIBRARIES opus)
 
